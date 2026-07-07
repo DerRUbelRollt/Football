@@ -16,6 +16,7 @@ import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
+import { Route as AuthenticatedEventsEventIdRouteImport } from './routes/_authenticated/events.$eventId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -52,21 +53,29 @@ const AuthenticatedGroupsGroupIdRoute =
     path: '/$groupId',
     getParentRoute: () => AuthenticatedGroupsRoute,
   } as any)
+const AuthenticatedEventsEventIdRoute =
+  AuthenticatedEventsEventIdRouteImport.update({
+    id: '/$eventId',
+    path: '/$eventId',
+    getParentRoute: () => AuthenticatedEventsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/events': typeof AuthenticatedEventsRoute
+  '/events': typeof AuthenticatedEventsRouteWithChildren
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/events': typeof AuthenticatedEventsRoute
+  '/events': typeof AuthenticatedEventsRouteWithChildren
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
 }
 export interface FileRoutesById {
@@ -75,8 +84,9 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/events': typeof AuthenticatedEventsRoute
+  '/_authenticated/events': typeof AuthenticatedEventsRouteWithChildren
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/_authenticated/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
 }
 export interface FileRouteTypes {
@@ -87,9 +97,17 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/events'
     | '/groups'
+    | '/events/$eventId'
     | '/groups/$groupId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/events' | '/groups' | '/groups/$groupId'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/events'
+    | '/groups'
+    | '/events/$eventId'
+    | '/groups/$groupId'
   id:
     | '__root__'
     | '/'
@@ -98,6 +116,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/events'
     | '/_authenticated/groups'
+    | '/_authenticated/events/$eventId'
     | '/_authenticated/groups/$groupId'
   fileRoutesById: FileRoutesById
 }
@@ -158,8 +177,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGroupsGroupIdRouteImport
       parentRoute: typeof AuthenticatedGroupsRoute
     }
+    '/_authenticated/events/$eventId': {
+      id: '/_authenticated/events/$eventId'
+      path: '/$eventId'
+      fullPath: '/events/$eventId'
+      preLoaderRoute: typeof AuthenticatedEventsEventIdRouteImport
+      parentRoute: typeof AuthenticatedEventsRoute
+    }
   }
 }
+
+interface AuthenticatedEventsRouteChildren {
+  AuthenticatedEventsEventIdRoute: typeof AuthenticatedEventsEventIdRoute
+}
+
+const AuthenticatedEventsRouteChildren: AuthenticatedEventsRouteChildren = {
+  AuthenticatedEventsEventIdRoute: AuthenticatedEventsEventIdRoute,
+}
+
+const AuthenticatedEventsRouteWithChildren =
+  AuthenticatedEventsRoute._addFileChildren(AuthenticatedEventsRouteChildren)
 
 interface AuthenticatedGroupsRouteChildren {
   AuthenticatedGroupsGroupIdRoute: typeof AuthenticatedGroupsGroupIdRoute
@@ -174,13 +211,13 @@ const AuthenticatedGroupsRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedEventsRoute: typeof AuthenticatedEventsRoute
+  AuthenticatedEventsRoute: typeof AuthenticatedEventsRouteWithChildren
   AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedEventsRoute: AuthenticatedEventsRoute,
+  AuthenticatedEventsRoute: AuthenticatedEventsRouteWithChildren,
   AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
 }
 
