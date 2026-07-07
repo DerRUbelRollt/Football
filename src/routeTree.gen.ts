@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PlayerIndexRouteImport } from './routes/player.index'
 import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authenticated/statistics'
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
@@ -31,6 +32,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlayerIndexRoute = PlayerIndexRouteImport.update({
+  id: '/player/',
+  path: '/player/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedStatisticsRoute = AuthenticatedStatisticsRouteImport.update({
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/events': typeof AuthenticatedEventsRouteWithChildren
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/statistics': typeof AuthenticatedStatisticsRoute
+  '/player/': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
 }
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/events': typeof AuthenticatedEventsRouteWithChildren
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/statistics': typeof AuthenticatedStatisticsRoute
+  '/player': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
 }
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/_authenticated/events': typeof AuthenticatedEventsRouteWithChildren
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/_authenticated/statistics': typeof AuthenticatedStatisticsRoute
+  '/player/': typeof PlayerIndexRoute
   '/_authenticated/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
 }
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/events'
     | '/groups'
     | '/statistics'
+    | '/player/'
     | '/events/$eventId'
     | '/groups/$groupId'
   fileRoutesByTo: FileRoutesByTo
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/events'
     | '/groups'
     | '/statistics'
+    | '/player'
     | '/events/$eventId'
     | '/groups/$groupId'
   id:
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/_authenticated/events'
     | '/_authenticated/groups'
     | '/_authenticated/statistics'
+    | '/player/'
     | '/_authenticated/events/$eventId'
     | '/_authenticated/groups/$groupId'
   fileRoutesById: FileRoutesById
@@ -136,6 +148,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  PlayerIndexRoute: typeof PlayerIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -159,6 +172,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/player/': {
+      id: '/player/'
+      path: '/player'
+      fullPath: '/player/'
+      preLoaderRoute: typeof PlayerIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/statistics': {
@@ -249,6 +269,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  PlayerIndexRoute: PlayerIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
