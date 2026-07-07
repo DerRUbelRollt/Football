@@ -9,38 +9,164 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PlayerIndexRouteImport } from './routes/player.index'
+import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authenticated/statistics'
+import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
+import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
+import { Route as AuthenticatedEventsEventIdRouteImport } from './routes/_authenticated/events.$eventId'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlayerIndexRoute = PlayerIndexRouteImport.update({
+  id: '/player/',
+  path: '/player/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedStatisticsRoute = AuthenticatedStatisticsRouteImport.update({
+  id: '/statistics',
+  path: '/statistics',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedGroupsRoute = AuthenticatedGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedEventsRoute = AuthenticatedEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedGroupsGroupIdRoute =
+  AuthenticatedGroupsGroupIdRouteImport.update({
+    id: '/$groupId',
+    path: '/$groupId',
+    getParentRoute: () => AuthenticatedGroupsRoute,
+  } as any)
+const AuthenticatedEventsEventIdRoute =
+  AuthenticatedEventsEventIdRouteImport.update({
+    id: '/$eventId',
+    path: '/$eventId',
+    getParentRoute: () => AuthenticatedEventsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/events': typeof AuthenticatedEventsRouteWithChildren
+  '/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/statistics': typeof AuthenticatedStatisticsRoute
+  '/player/': typeof PlayerIndexRoute
+  '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
+  '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/events': typeof AuthenticatedEventsRouteWithChildren
+  '/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/statistics': typeof AuthenticatedStatisticsRoute
+  '/player': typeof PlayerIndexRoute
+  '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
+  '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/events': typeof AuthenticatedEventsRouteWithChildren
+  '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/_authenticated/statistics': typeof AuthenticatedStatisticsRoute
+  '/player/': typeof PlayerIndexRoute
+  '/_authenticated/events/$eventId': typeof AuthenticatedEventsEventIdRoute
+  '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/events'
+    | '/groups'
+    | '/statistics'
+    | '/player/'
+    | '/events/$eventId'
+    | '/groups/$groupId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/events'
+    | '/groups'
+    | '/statistics'
+    | '/player'
+    | '/events/$eventId'
+    | '/groups/$groupId'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/events'
+    | '/_authenticated/groups'
+    | '/_authenticated/statistics'
+    | '/player/'
+    | '/_authenticated/events/$eventId'
+    | '/_authenticated/groups/$groupId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  PlayerIndexRoute: typeof PlayerIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +174,103 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/player/': {
+      id: '/player/'
+      path: '/player'
+      fullPath: '/player/'
+      preLoaderRoute: typeof PlayerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/statistics': {
+      id: '/_authenticated/statistics'
+      path: '/statistics'
+      fullPath: '/statistics'
+      preLoaderRoute: typeof AuthenticatedStatisticsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/groups': {
+      id: '/_authenticated/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof AuthenticatedGroupsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/events': {
+      id: '/_authenticated/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof AuthenticatedEventsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/groups/$groupId': {
+      id: '/_authenticated/groups/$groupId'
+      path: '/$groupId'
+      fullPath: '/groups/$groupId'
+      preLoaderRoute: typeof AuthenticatedGroupsGroupIdRouteImport
+      parentRoute: typeof AuthenticatedGroupsRoute
+    }
+    '/_authenticated/events/$eventId': {
+      id: '/_authenticated/events/$eventId'
+      path: '/$eventId'
+      fullPath: '/events/$eventId'
+      preLoaderRoute: typeof AuthenticatedEventsEventIdRouteImport
+      parentRoute: typeof AuthenticatedEventsRoute
+    }
   }
 }
 
+interface AuthenticatedEventsRouteChildren {
+  AuthenticatedEventsEventIdRoute: typeof AuthenticatedEventsEventIdRoute
+}
+
+const AuthenticatedEventsRouteChildren: AuthenticatedEventsRouteChildren = {
+  AuthenticatedEventsEventIdRoute: AuthenticatedEventsEventIdRoute,
+}
+
+const AuthenticatedEventsRouteWithChildren =
+  AuthenticatedEventsRoute._addFileChildren(AuthenticatedEventsRouteChildren)
+
+interface AuthenticatedGroupsRouteChildren {
+  AuthenticatedGroupsGroupIdRoute: typeof AuthenticatedGroupsGroupIdRoute
+}
+
+const AuthenticatedGroupsRouteChildren: AuthenticatedGroupsRouteChildren = {
+  AuthenticatedGroupsGroupIdRoute: AuthenticatedGroupsGroupIdRoute,
+}
+
+const AuthenticatedGroupsRouteWithChildren =
+  AuthenticatedGroupsRoute._addFileChildren(AuthenticatedGroupsRouteChildren)
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedEventsRoute: typeof AuthenticatedEventsRouteWithChildren
+  AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
+  AuthenticatedStatisticsRoute: typeof AuthenticatedStatisticsRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedEventsRoute: AuthenticatedEventsRouteWithChildren,
+  AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
+  AuthenticatedStatisticsRoute: AuthenticatedStatisticsRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  PlayerIndexRoute: PlayerIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
