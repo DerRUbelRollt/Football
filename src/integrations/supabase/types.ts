@@ -14,7 +14,181 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendances: {
+        Row: {
+          event_id: string
+          id: string
+          player_id: string
+          status: string
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          event_id: string
+          id?: string
+          player_id: string
+          status?: string
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          event_id?: string
+          id?: string
+          player_id?: string
+          status?: string
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendances_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendances_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_at: string
+          event_type: string
+          group_id: string
+          home_away: string | null
+          id: string
+          location: string | null
+          meeting_point: string | null
+          opponent: string | null
+          title: string
+          trainer_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_at: string
+          event_type: string
+          group_id: string
+          home_away?: string | null
+          id?: string
+          location?: string | null
+          meeting_point?: string | null
+          opponent?: string | null
+          title: string
+          trainer_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_at?: string
+          event_type?: string
+          group_id?: string
+          home_away?: string | null
+          id?: string
+          location?: string | null
+          meeting_point?: string | null
+          opponent?: string | null
+          title?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          trainer_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          trainer_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          trainer_id?: string
+        }
+        Relationships: []
+      }
+      players: {
+        Row: {
+          created_at: string
+          first_name: string
+          group_id: string
+          id: string
+          last_name: string
+          player_code: string
+          trainer_id: string
+        }
+        Insert: {
+          created_at?: string
+          first_name: string
+          group_id: string
+          id?: string
+          last_name: string
+          player_code: string
+          trainer_id: string
+        }
+        Update: {
+          created_at?: string
+          first_name?: string
+          group_id?: string
+          id?: string
+          last_name?: string
+          player_code?: string
+          trainer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainer_profiles: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
