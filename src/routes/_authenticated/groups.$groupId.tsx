@@ -15,6 +15,13 @@ import { EmptyState } from "./dashboard";
 export const Route = createFileRoute("/_authenticated/groups/$groupId")({
   head: () => ({ meta: [{ title: "Mannschaft" }] }),
   component: GroupDetail,
+  errorComponent: ({ error, reset }) => (
+    <div className="p-6 text-sm text-muted-foreground">
+      Fehler beim Laden: {(error as Error)?.message}
+      <button className="ml-2 underline" onClick={reset}>Erneut versuchen</button>
+    </div>
+  ),
+  notFoundComponent: () => <div className="p-6">Mannschaft nicht gefunden.</div>,
 });
 
 function GroupDetail() {
