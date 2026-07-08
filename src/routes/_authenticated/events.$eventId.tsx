@@ -169,21 +169,24 @@ function StatChip({ label, value, className }: { label: string; value: number; c
 }
 
 function StatusPill({ status, onChange }: { status: string; onChange: (s: "accepted" | "declined" | "pending") => void }) {
-  const cfg = {
-    accepted: { color: "text-primary", bg: "bg-primary/15", icon: Check, label: "Zugesagt" },
-    declined: { color: "text-destructive", bg: "bg-destructive/15", icon: X, label: "Abgesagt" },
-    pending: { color: "text-muted-foreground", bg: "bg-secondary", icon: Clock, label: "Offen" },
-  }[status as "accepted" | "declined" | "pending"];
-  const Icon = cfg.icon;
+  const btn = (active: boolean, tone: "ok" | "no" | "n") => {
+    const base = "h-8 px-2.5 rounded-md text-xs font-semibold inline-flex items-center gap-1 transition";
+    if (!active) return `${base} bg-secondary text-muted-foreground hover:text-foreground`;
+    if (tone === "ok") return `${base} bg-primary text-primary-foreground shadow-glow`;
+    if (tone === "no") return `${base} bg-destructive text-destructive-foreground`;
+    return `${base} bg-warning/20 text-warning`;
+  };
   return (
-    <div className="flex items-center gap-1">
-      <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.color}`}>
-        <Icon className="h-3 w-3" /> {cfg.label}
-      </div>
-      <div className="flex gap-0.5">
-        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onChange("accepted")}><Check className="h-3.5 w-3.5" /></Button>
-        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onChange("declined")}><X className="h-3.5 w-3.5" /></Button>
-      </div>
+    <div className="flex gap-1">
+      <button className={btn(status === "accepted", "ok")} onClick={() => onChange("accepted")}>
+        <Check className="h-3.5 w-3.5" /> Anwesend
+      </button>
+      <button className={btn(status === "declined", "no")} onClick={() => onChange("declined")}>
+        <X className="h-3.5 w-3.5" /> Fehlt
+      </button>
+      <button className={btn(status === "pending", "n")} onClick={() => onChange("pending")} title="Offen">
+        <Clock className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }
