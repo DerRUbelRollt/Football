@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Activity, Trophy, ArrowRight, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -110,6 +111,8 @@ function CreateEventDialog({ onCreated }: { onCreated: () => void }) {
   const [location, setLocation] = useState("");
   const [meeting, setMeeting] = useState("");
   const [desc, setDesc] = useState("");
+  const [recurring, setRecurring] = useState(false);
+  const [weeks, setWeeks] = useState(4);
 
   const groupsQ = useQuery({
     queryKey: ["groups-min"],
@@ -125,24 +128,32 @@ function CreateEventDialog({ onCreated }: { onCreated: () => void }) {
     mutationFn: async () => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error("Nicht angemeldet");
-      const eventAt = new Date(`${date}T${time}`).toISOString();
-      const { error } = await supabase.from("events").insert({
-        event_type: type,
-        title: title || (type === "training" ? "Training" : `Spiel gegen ${opponent}`),
-        opponent: type === "game" ? opponent : null,
-        home_away: type === "game" ? homeAway : null,
-        location: location || null,
-        meeting_point: meeting || null,
-        event_at: eventAt,
-        description: desc || null,
-        group_id: groupId,
-        trainer_id: user.user.id,
+      const base = new Date(`${date}T${time}`);
+      const count = type === "training" && recurring ? Math.max(1, Math.min(52, weeks)) : 1;
+      const rows = Array.from({ length: count }, (_, i) => {
+        const d = new Date(base);
+        d.setDate(d.getDate() + i * 7);
+        return {
+          event_type: type,
+          title: title || (type === "training" ? "Training" : `Spiel gegen ${opponent}`),
+          opponent: type === "game" ? opponent : null,
+          home_away: type === "game" ? homeAway : null,
+          location: location || null,
+          meeting_point: meeting || null,
+          event_at: d.toISOString(),
+          description: desc || null,
+          group_id: groupId,
+          trainer_id: user.user.id,
+        };
       });
+      const { error } = await supabase.from("events").insert(rows);
       if (error) throw error;
+      return rows.length;
     },
-    onSuccess: () => {
-      toast.success("Ereignis erstellt");
+    onSuccess: (n) => {
+      toast.success(n && n > 1 ? `${n} Trainings erstellt` : "Ereignis erstellt");
       setTitle(""); setOpponent(""); setDate(""); setLocation(""); setMeeting(""); setDesc("");
+      setRecurring(false); setWeeks(4);
       setOpen(false);
       onCreated();
     },
@@ -207,6 +218,29 @@ function CreateEventDialog({ onCreated }: { onCreated: () => void }) {
               <Input type="time" required value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
           </div>
+          {type === "training" && (
+            <div className="space-y-3 rounded-xl border border-border/60 p-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox checked={recurring} onCheckedChange={(v) => setRecurring(!!v)} />
+                <span className="text-sm font-medium">Wöchentlich wiederholen</span>
+              </label>
+              {recurring && (
+                <div className="space-y-2">
+                  <Label>Anzahl Wochen</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={52}
+                    value={weeks}
+                    onChange={(e) => setWeeks(parseInt(e.target.value) || 1)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Erstellt {Math.max(1, Math.min(52, weeks))} Trainings am selben Wochentag & Uhrzeit.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Ort</Label>
