@@ -64,9 +64,13 @@ function PlayerHome() {
   }
 
   const { player, upcoming, history } = q.data!;
-  const accepted = history.filter((h: any) => h.status === "accepted").length;
-  const total = history.length;
-  const rate = total ? Math.round((accepted / total) * 100) : 0;
+  const all = [...upcoming, ...history];
+  const accepted = all.filter((e: any) => e.attendances?.[0]?.status === "accepted").length;
+  const decided = all.filter((e: any) => {
+    const s = e.attendances?.[0]?.status;
+    return s === "accepted" || s === "declined";
+  }).length;
+  const rate = decided ? Math.round((accepted / decided) * 100) : 0;
   const nextTraining = upcoming.find((e: any) => e.event_type === "training");
   const nextGame = upcoming.find((e: any) => e.event_type === "game");
 
