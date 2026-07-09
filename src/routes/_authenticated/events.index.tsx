@@ -110,6 +110,8 @@ function CreateEventDialog({ onCreated }: { onCreated: () => void }) {
   const [location, setLocation] = useState("");
   const [meeting, setMeeting] = useState("");
   const [desc, setDesc] = useState("");
+  const [recurring, setRecurring] = useState(false);
+  const [weeks, setWeeks] = useState(4);
 
   const groupsQ = useQuery({
     queryKey: ["groups-min"],
@@ -125,24 +127,32 @@ function CreateEventDialog({ onCreated }: { onCreated: () => void }) {
     mutationFn: async () => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error("Nicht angemeldet");
-      const eventAt = new Date(`${date}T${time}`).toISOString();
-      const { error } = await supabase.from("events").insert({
-        event_type: type,
-        title: title || (type === "training" ? "Training" : `Spiel gegen ${opponent}`),
-        opponent: type === "game" ? opponent : null,
-        home_away: type === "game" ? homeAway : null,
-        location: location || null,
-        meeting_point: meeting || null,
-        event_at: eventAt,
-        description: desc || null,
-        group_id: groupId,
-        trainer_id: user.user.id,
+      const base = new Date(`${date}T${time}`);
+      const count = type === "training" && recurring ? Math.max(1, Math.min(52, weeks)) : 1;
+      const rows = Array.from({ length: count }, (_, i) => {
+        const d = new Date(base);
+        d.setDate(d.getDate() + i * 7);
+        return {
+          event_type: type,
+          title: title || (type === "training" ? "Training" : `Spiel gegen ${opponent}`),
+          opponent: type === "game" ? opponent : null,
+          home_away: type === "game" ? homeAway : null,
+          location: location || null,
+          meeting_point: meeting || null,
+          event_at: d.toISOString(),
+          description: desc || null,
+          group_id: groupId,
+          trainer_id: user.user.id,
+        };
       });
+      const { error } = await supabase.from("events").insert(rows);
       if (error) throw error;
+      return rows.length;
     },
-    onSuccess: () => {
-      toast.success("Ereignis erstellt");
+    onSuccess: (n) => {
+      toast.success(n && n > 1 ? `${n} Trainings erstellt` : "Ereignis erstellt");
       setTitle(""); setOpponent(""); setDate(""); setLocation(""); setMeeting(""); setDesc("");
+      setRecurring(false); setWeeks(4);
       setOpen(false);
       onCreated();
     },
