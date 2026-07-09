@@ -218,6 +218,29 @@ function CreateEventDialog({ onCreated }: { onCreated: () => void }) {
               <Input type="time" required value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
           </div>
+          {type === "training" && (
+            <div className="space-y-3 rounded-xl border border-border/60 p-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox checked={recurring} onCheckedChange={(v) => setRecurring(!!v)} />
+                <span className="text-sm font-medium">Wöchentlich wiederholen</span>
+              </label>
+              {recurring && (
+                <div className="space-y-2">
+                  <Label>Anzahl Wochen</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={52}
+                    value={weeks}
+                    onChange={(e) => setWeeks(parseInt(e.target.value) || 1)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Erstellt {Math.max(1, Math.min(52, weeks))} Trainings am selben Wochentag & Uhrzeit.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Ort</Label>
