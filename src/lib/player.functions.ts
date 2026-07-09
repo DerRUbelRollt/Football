@@ -66,11 +66,25 @@ export const setPlayerAttendance = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!player) throw new Error("Ungültige Spieler-ID");
 
+    const { data: ev } = await supabaseAdmin
+      .from("events")
+      .select("trainer_id")
+      .eq("id", data.eventId)
+      .maybeSingle();
+    if (!ev) throw new Error("Ereignis nicht gefunden");
+
     const { error } = await supabaseAdmin
       .from("attendances")
-      .update({ status: data.status, updated_at: new Date().toISOString() })
-      .eq("event_id", data.eventId)
-      .eq("player_id", player.id);
+      .upsert(
+        {
+          event_id: data.eventId,
+          player_id: player.id,
+          trainer_id: ev.trainer_id,
+          status: data.status,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "event_id,player_id" },
+      );
     if (error) throw new Error(error.message);
     return { ok: true };
   });
