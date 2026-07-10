@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
-import { loginPlayer } from "@/lib/player.functions";
+import { api, ApiError } from "@/lib/api-client";
 import { setPlayerCode } from "@/lib/player-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,25 +98,18 @@ function TrainerForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (isSignup) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-            data: { display_name: displayName || email.split("@")[0] },
-          },
-        });
-        if (error) throw error;
-        toast.success("Konto erstellt. Willkommen!");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast.success("Willkommen zurück!");
-      }
+      const result = isSignup
+        ? await api.auth.signup({ email, password, displayName: displayName || undefined })
+        : await api.auth.login({ email, password });
+      await supabase.auth.setSession({
+        access_token: result.session.access_token,
+        refresh_token: result.session.refresh_token,
+      });
+      toast.success(isSignup ? "Konto erstellt. Willkommen!" : "Willkommen zurück!");
       nav({ to: "/dashboard" });
     } catch (err) {
-      toast.error((err as Error).message);
+      const msg = err instanceof ApiError ? err.message : (err as Error).message;
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -168,12 +161,13 @@ function PlayerForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      const player = await loginPlayer({ data: { code } });
+      const { player } = await api.player.login({ code });
       setPlayerCode(player.player_code);
       toast.success(`Hallo ${player.first_name}!`);
       nav({ to: "/player" });
     } catch (err) {
-      toast.error((err as Error).message);
+      const msg = err instanceof ApiError ? err.message : (err as Error).message;
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
