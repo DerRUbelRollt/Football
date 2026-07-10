@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getPlayerOverview, setPlayerAttendance } from "@/lib/player.functions";
+import { api, ApiError } from "@/lib/api-client";
 import { getPlayerCode, clearPlayerCode } from "@/lib/player-session";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
