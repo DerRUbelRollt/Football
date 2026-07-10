@@ -28,15 +28,15 @@ function PlayerHome() {
 
   const q = useQuery({
     queryKey: ["player-overview", code],
-    queryFn: () => getPlayerOverview({ data: { code: code! } }),
+    queryFn: () => api.player.overview({ code: code! }),
     enabled: !!code,
   });
 
   const m = useMutation({
     mutationFn: (vars: { eventId: string; status: "accepted" | "declined" }) =>
-      setPlayerAttendance({ data: { code: code!, eventId: vars.eventId, status: vars.status } }),
+      api.player.setAttendance({ code: code!, eventId: vars.eventId, status: vars.status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["player-overview"] }),
-    onError: (e) => toast.error((e as Error).message),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : (e as Error).message),
   });
 
   function signOut() {

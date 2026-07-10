@@ -112,5 +112,7 @@ export const api = {
       apiFetch<{ player: PlayerSummary }>("/api/player/login", { method: "POST", body }),
     overview: (body: { code: string }) =>
       apiFetch<PlayerOverview>("/api/player/overview", { method: "POST", body }),
+    setAttendance: (body: { code: string; eventId: string; status: "accepted" | "declined" | "pending" }) =>
+      apiFetch<{ ok: true }>("/api/player/attendance", { method: "POST", body }),
   },
 };
