@@ -1,5 +1,4 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
 import { Trophy, LayoutDashboard, Users, CalendarDays, BarChart3, LogOut, Menu, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,7 @@ export function TrainerShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
   async function signOut() {
-    await supabase.auth.signOut();
+    // TODO: Implement signOut via backend
     navigate({ to: "/auth" });
   }
 

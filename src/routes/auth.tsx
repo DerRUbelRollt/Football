@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { setSessionTokens } from "@/lib/session.client";
+import { setSessionTokens } from "@/lib/session";
 import { api, ApiError } from "@/lib/api-client";
 import { setPlayerCode } from "@/lib/player-session";
 import { Button } from "@/components/ui/button";

@@ -55,7 +55,7 @@ export async function requireTrainerUser(request: Request): Promise<{ userId: st
   if (!token) throw new HttpError("Unauthorized", 401);
 
   // Proxy token verification to backend service
-  const { callBackend } = await import("@/lib/backend-client.server");
+  const { callBackend } = await import("@/lib/backend-client.server.ts");
   try {
     const resp = await callBackend("/auth/verify", { method: "POST", body: { token } });
     // expect { userId: string, email: string | null }

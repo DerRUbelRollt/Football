@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+// TODO: Replace supabase with backend API calls
 import { motion } from "framer-motion";
 import { Users, CalendarDays, Trophy, Activity, ArrowRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";

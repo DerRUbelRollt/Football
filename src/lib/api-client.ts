@@ -1,4 +1,4 @@
-import { getSessionTokens } from "./session.client";
+import { getSessionTokens } from "./session";
 
 export class ApiError extends Error {
   status: number;
@@ -106,6 +106,11 @@ export const api = {
       apiFetch<AuthResponse>("/api/auth/login", { method: "POST", body }),
     signup: (body: { email: string; password: string; displayName?: string }) =>
       apiFetch<AuthResponse>("/api/auth/signup", { method: "POST", body }),
+    verify: (token: string) =>
+      apiFetch<{ userId: string; email: string | null }>("/api/auth/verify", {
+        method: "POST",
+        body: { token },
+      }),
   },
   player: {
     login: (body: { code: string }) =>

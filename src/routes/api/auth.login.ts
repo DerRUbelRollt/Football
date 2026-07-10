@@ -13,7 +13,7 @@ export const Route = createFileRoute("/api/auth/login")({
       POST: async ({ request }) =>
         handle(async () => {
           const data = await readJson(request, schema);
-          const resp = await (await import("@/lib/backend-client.server")).callBackend("/auth/login", { method: "POST", body: data });
+          const resp = await (await import("@/lib/backend-client.server.ts")).callBackend("/auth/login", { method: "POST", body: data });
           return jsonResponse(resp);
         }),
     },

@@ -14,14 +14,9 @@ export const Route = createFileRoute("/api/player/attendance")({
       POST: async ({ request }) =>
         handle(async () => {
           const data = await readJson(request, schema);
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-          const { data: player } = await supabaseAdmin
-            .from("players")
-            .select("id")
-            .eq("player_code", data.code.toUpperCase())
-            .maybeSingle();
-                    const data = await readJson(request, schema);
-                    const resp = await (await import("@/lib/backend-client.server")).callBackend("/player/attendance", { method: "POST", body: data });
-                    return jsonResponse(resp);
-            .from("events")
+          const resp = await (await import("@/lib/backend-client.server.ts")).callBackend("/player/attendance", { method: "POST", body: data });
+          return jsonResponse(resp);
+        }),
+    },
+  },
+});
