@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { getSessionTokens } from "./session.client";
 
 export class ApiError extends Error {
   status: number;
@@ -34,8 +34,8 @@ export async function apiFetch<T>(path: string, opts: ApiFetchOptions = {}): Pro
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (auth) {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
+    const s = getSessionTokens();
+    const token = s.access_token ?? null;
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 

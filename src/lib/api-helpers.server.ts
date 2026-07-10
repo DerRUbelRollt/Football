@@ -54,8 +54,13 @@ export async function requireTrainerUser(request: Request): Promise<{ userId: st
   const token = authHeader.slice(7).trim();
   if (!token) throw new HttpError("Unauthorized", 401);
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !data.user) throw new HttpError("Unauthorized", 401);
-  return { userId: data.user.id, email: data.user.email ?? null };
+  // Proxy token verification to backend service
+  const { callBackend } = await import("@/lib/backend-client.server");
+  try {
+    const resp = await callBackend("/auth/verify", { method: "POST", body: { token } });
+    // expect { userId: string, email: string | null }
+    return { userId: resp.userId, email: resp.email ?? null };
+  } catch (e) {
+    throw new HttpError("Unauthorized", 401);
+  }
 }

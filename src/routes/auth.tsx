@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
+import { setSessionTokens } from "@/lib/session.client";
 import { api, ApiError } from "@/lib/api-client";
 import { setPlayerCode } from "@/lib/player-session";
 import { Button } from "@/components/ui/button";
@@ -101,10 +101,7 @@ function TrainerForm() {
       const result = isSignup
         ? await api.auth.signup({ email, password, displayName: displayName || undefined })
         : await api.auth.login({ email, password });
-      await supabase.auth.setSession({
-        access_token: result.session.access_token,
-        refresh_token: result.session.refresh_token,
-      });
+        setSessionTokens({ access_token: result.session.access_token, refresh_token: result.session.refresh_token });
       toast.success(isSignup ? "Konto erstellt. Willkommen!" : "Willkommen zurück!");
       nav({ to: "/dashboard" });
     } catch (err) {

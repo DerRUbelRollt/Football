@@ -21,28 +21,7 @@ export const Route = createFileRoute("/api/player/attendance")({
             .select("id")
             .eq("player_code", data.code.toUpperCase())
             .maybeSingle();
-          if (!player) throw new HttpError("Ungültige Spieler-ID", 404);
-
-          const { data: ev } = await supabaseAdmin
+                    const data = await readJson(request, schema);
+                    const resp = await (await import("@/lib/backend-client.server")).callBackend("/player/attendance", { method: "POST", body: data });
+                    return jsonResponse(resp);
             .from("events")
-            .select("trainer_id")
-            .eq("id", data.eventId)
-            .maybeSingle();
-          if (!ev) throw new HttpError("Ereignis nicht gefunden", 404);
-
-          const { error } = await supabaseAdmin.from("attendances").upsert(
-            {
-              event_id: data.eventId,
-              player_id: player.id,
-              trainer_id: ev.trainer_id,
-              status: data.status,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "event_id,player_id" },
-          );
-          if (error) throw new HttpError(error.message, 500);
-          return jsonResponse({ ok: true });
-        }),
-    },
-  },
-});
