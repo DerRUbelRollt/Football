@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-// TODO: Replace supabase with backend API calls
+import { api } from "@/lib/api-client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, ArrowLeft, Copy, Trash2, KeyRound, Users, Search } from "lucide-react";
 import { toast } from "sonner";
-import { generatePlayerCode } from "@/lib/generate-player-code";
 import { EmptyState } from "./dashboard";
 
 export const Route = createFileRoute("/_authenticated/groups/$groupId")({
@@ -32,37 +31,24 @@ function GroupDetail() {
 
   const groupQ = useQuery({
     queryKey: ["group", groupId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("groups").select("*").eq("id", groupId).maybeSingle();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => api.groups.get(groupId),
   });
 
   const playersQ = useQuery({
     queryKey: ["players", groupId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("players").select("*").eq("group_id", groupId).order("last_name");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => api.groups.players(groupId),
   });
 
   const deleteGroup = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("groups").delete().eq("id", groupId);
-      if (error) throw error;
-    },
+    mutationFn: () => api.groups.remove(groupId),
     onSuccess: () => { toast.success("Mannschaft gelöscht"); nav({ to: "/groups" }); },
     onError: (e) => toast.error((e as Error).message),
   });
 
   const deletePlayer = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("players").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: number) => api.players.remove(id),
     onSuccess: () => { toast.success("Spieler gelöscht"); qc.invalidateQueries({ queryKey: ["players", groupId] }); },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const filtered = (playersQ.data ?? []).filter((p) => `${p.first_name} ${p.last_name}`.toLowerCase().includes(search.toLowerCase()));
@@ -152,22 +138,12 @@ function AddPlayerDialog({ groupId, onCreated }: { groupId: string; onCreated: (
 
   const m = useMutation({
     mutationFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error("Nicht angemeldet");
-      // try up to 5 times for unique code
-      for (let i = 0; i < 5; i++) {
-        const code = generatePlayerCode();
-        const { error } = await supabase.from("players").insert({
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          group_id: groupId,
-          trainer_id: user.user.id,
-          player_code: code,
-        });
-        if (!error) return code;
-        if (!error.message.includes("duplicate")) throw error;
-      }
-      throw new Error("Konnte keine eindeutige ID generieren");
+      // Die eindeutige Spieler-ID wird im Backend generiert.
+      const player = await api.groups.addPlayer(groupId, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      });
+      return player.player_code;
     },
     onSuccess: (code) => {
       toast.success(`Spieler angelegt · ID: ${code}`);

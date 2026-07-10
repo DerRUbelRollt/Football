@@ -27,11 +27,11 @@ public class PlayerController : ControllerBase
         if (player == null) return NotFound(new { error = "Ungültige Spieler-ID" });
 
         var now = DateTime.UtcNow;
-        var upcoming = await _ctx.Events.Include(e => e.Group).Where(e => e.GroupId == player.GroupId && e.EventAt >= now).ToListAsync();
+        var upcoming = await _ctx.Events.Include(e => e.Group).Where(e => e.GroupId == player.GroupId && e.EventAt >= now).OrderBy(e => e.EventAt).ToListAsync();
         var history = await _ctx.Events.Include(e => e.Group).Where(e => e.GroupId == player.GroupId && e.EventAt < now).OrderByDescending(e => e.EventAt).Take(50).ToListAsync();
 
-        var upList = upcoming.Select(e => new { e.Id, e.EventType, e.Title, e.Opponent, e.HomeAway, e.Location, e.MeetingPoint, event_at = e.EventAt, e.Description, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { id = a.Id, status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
-        var histList = history.Select(e => new { e.Id, e.EventType, e.Title, event_at = e.EventAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
+        var upList = upcoming.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, opponent = e.Opponent, home_away = e.HomeAway, location = e.Location, meeting_point = e.MeetingPoint, event_at = e.EventAt, description = e.Description, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { id = a.Id, status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
+        var histList = history.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, event_at = e.EventAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
 
         var p = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = player.GroupId, groups = player.Group == null ? null : new { name = player.Group.Name } };
 

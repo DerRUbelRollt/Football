@@ -35,7 +35,7 @@ export async function apiFetch<T>(path: string, opts: ApiFetchOptions = {}): Pro
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (auth) {
     const s = getSessionTokens();
-    const token = s.access_token ?? null;
+    const token = s?.access_token ?? null;
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
@@ -86,11 +86,11 @@ export interface AuthResponse {
 }
 
 export interface PlayerSummary {
-  id: string;
+  id: number;
   first_name: string;
   last_name: string;
   player_code: string;
-  group_id: string;
+  group_id: number;
   groups: { name: string } | null;
 }
 
@@ -98,6 +98,82 @@ export interface PlayerOverview {
   player: PlayerSummary;
   upcoming: any[];
   history: any[];
+}
+
+export type AttendanceStatus = "accepted" | "declined" | "pending";
+
+export interface GroupSummary {
+  id: number;
+  name: string;
+  description: string | null;
+  player_count: number;
+}
+
+export interface GroupDetail {
+  id: number;
+  name: string;
+  description: string | null;
+}
+
+export interface PlayerRow {
+  id: number;
+  first_name: string;
+  last_name: string;
+  player_code: string;
+  group_id: number;
+}
+
+export interface EventListItem {
+  id: number;
+  event_type: "training" | "game";
+  title: string;
+  opponent: string | null;
+  home_away: "home" | "away" | null;
+  location: string | null;
+  event_at: string;
+  groups: { name: string } | null;
+}
+
+export interface EventDetail extends EventListItem {
+  meeting_point: string | null;
+  description: string | null;
+  group_id: number;
+}
+
+export interface NewEvent {
+  eventType: "training" | "game";
+  title: string;
+  opponent: string | null;
+  homeAway: "home" | "away" | null;
+  location: string | null;
+  meetingPoint: string | null;
+  eventAt: string;
+  description: string | null;
+  groupId: number;
+}
+
+export interface EventAttendanceRow {
+  id: number;
+  status: AttendanceStatus;
+  players: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    player_code: string;
+  } | null;
+}
+
+export interface DashboardStats {
+  groups: number;
+  players: number;
+  upcoming: EventListItem[];
+  rate: number;
+}
+
+export interface StatsAttendanceRow {
+  status: AttendanceStatus;
+  players: { id: number; first_name: string; last_name: string } | null;
+  events: { event_at: string } | null;
 }
 
 export const api = {
@@ -117,7 +193,47 @@ export const api = {
       apiFetch<{ player: PlayerSummary }>("/api/player/login", { method: "POST", body }),
     overview: (body: { code: string }) =>
       apiFetch<PlayerOverview>("/api/player/overview", { method: "POST", body }),
-    setAttendance: (body: { code: string; eventId: string; status: "accepted" | "declined" | "pending" }) =>
+    setAttendance: (body: { code: string; eventId: number; status: AttendanceStatus }) =>
       apiFetch<{ ok: true }>("/api/player/attendance", { method: "POST", body }),
+  },
+  groups: {
+    list: () => apiFetch<GroupSummary[]>("/api/groups", { auth: true }),
+    create: (body: { name: string; description: string | null }) =>
+      apiFetch<GroupDetail>("/api/groups", { method: "POST", body, auth: true }),
+    get: (groupId: string | number) =>
+      apiFetch<GroupDetail>(`/api/groups/${groupId}`, { auth: true }),
+    remove: (groupId: string | number) =>
+      apiFetch<{ ok: true }>(`/api/groups/${groupId}`, { method: "DELETE", auth: true }),
+    players: (groupId: string | number) =>
+      apiFetch<PlayerRow[]>(`/api/groups/${groupId}/players`, { auth: true }),
+    addPlayer: (groupId: string | number, body: { firstName: string; lastName: string }) =>
+      apiFetch<PlayerRow>(`/api/groups/${groupId}/players`, { method: "POST", body, auth: true }),
+  },
+  players: {
+    remove: (playerId: number) =>
+      apiFetch<{ ok: true }>(`/api/players/${playerId}`, { method: "DELETE", auth: true }),
+  },
+  events: {
+    list: () => apiFetch<EventListItem[]>("/api/events", { auth: true }),
+    create: (rows: NewEvent[]) =>
+      apiFetch<{ count: number }>("/api/events", { method: "POST", body: rows, auth: true }),
+    get: (eventId: string | number) =>
+      apiFetch<EventDetail>(`/api/events/${eventId}`, { auth: true }),
+    remove: (eventId: string | number) =>
+      apiFetch<{ ok: true }>(`/api/events/${eventId}`, { method: "DELETE", auth: true }),
+    attendances: (eventId: string | number) =>
+      apiFetch<EventAttendanceRow[]>(`/api/events/${eventId}/attendances`, { auth: true }),
+  },
+  attendances: {
+    setStatus: (attendanceId: number, status: AttendanceStatus) =>
+      apiFetch<{ ok: true }>(`/api/attendances/${attendanceId}`, {
+        method: "PATCH",
+        body: { status },
+        auth: true,
+      }),
+  },
+  stats: {
+    dashboard: () => apiFetch<DashboardStats>("/api/stats/dashboard", { auth: true }),
+    attendance: () => apiFetch<StatsAttendanceRow[]>("/api/stats/attendance", { auth: true }),
   },
 };

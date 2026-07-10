@@ -4,7 +4,7 @@ import { handle, jsonResponse, readJson, HttpError } from "@/lib/api-helpers.ser
 
 const schema = z.object({
   code: z.string().trim().min(4).max(32),
-  eventId: z.string().uuid(),
+  eventId: z.coerce.number().int().positive(),
   status: z.enum(["accepted", "declined", "pending"]),
 });
 

@@ -1,3 +1,5 @@
+import { HttpError } from "@/lib/api-helpers.server";
+
 const DEFAULT_BACKEND_URLS = ["http://localhost:5001", "http://localhost:5002", "http://localhost:5003"];
 
 function getBackendBaseUrls(): string[] {
@@ -42,11 +44,13 @@ export async function callBackend<T = unknown>(path: string, options: { method?:
         const message = typeof parsed === "object" && parsed !== null && "error" in parsed && typeof (parsed as { error?: unknown }).error === "string"
           ? (parsed as { error: string }).error
           : `Backend request failed with ${response.status}`;
-        throw new Error(message);
+        // Das Backend hat geantwortet: Status durchreichen statt weitere URLs zu probieren.
+        throw new HttpError(message, response.status);
       }
 
       return parsed as T;
     } catch (error) {
+      if (error instanceof HttpError) throw error;
       lastError = error;
     }
   }

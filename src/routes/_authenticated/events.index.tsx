@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-// TODO: Replace supabase with backend API calls
+import { api, type NewEvent } from "@/lib/api-client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,14 +28,7 @@ function EventsPage() {
 
   const q = useQuery({
     queryKey: ["events"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("id, event_type, title, opponent, home_away, location, event_at, groups(name)")
-        .order("event_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => api.events.list(),
   });
 
   const now = new Date();
@@ -79,7 +72,7 @@ function EventsPage() {
       ) : (
         <div className="grid gap-3">
           {list.map((e) => (
-            <Link key={e.id} to="/events/$eventId" params={{ eventId: e.id }} className="card-elevated p-4 flex items-center gap-4 hover:border-primary/50 transition group">
+            <Link key={e.id} to="/events/$eventId" params={{ eventId: String(e.id) }} className="card-elevated p-4 flex items-center gap-4 hover:border-primary/50 transition group">
               <div className={`h-12 w-12 rounded-xl grid place-items-center shrink-0 ${e.event_type === "training" ? "bg-primary/15 text-primary" : "bg-chart-2/15 text-chart-2"}`}>
                 {e.event_type === "training" ? <Activity className="h-5 w-5" /> : <Trophy className="h-5 w-5" />}
               </div>
@@ -115,40 +108,32 @@ function CreateEventDialog({ onCreated }: { onCreated: () => void }) {
   const [weeks, setWeeks] = useState(4);
 
   const groupsQ = useQuery({
-    queryKey: ["groups-min"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("groups").select("id, name").order("name");
-      if (error) throw error;
-      return data;
-    },
+    queryKey: ["groups"],
+    queryFn: () => api.groups.list(),
     enabled: open,
   });
 
   const m = useMutation({
     mutationFn: async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error("Nicht angemeldet");
       const base = new Date(`${date}T${time}`);
       const count = type === "training" && recurring ? Math.max(1, Math.min(52, weeks)) : 1;
-      const rows = Array.from({ length: count }, (_, i) => {
+      const rows: NewEvent[] = Array.from({ length: count }, (_, i) => {
         const d = new Date(base);
         d.setDate(d.getDate() + i * 7);
         return {
-          event_type: type,
+          eventType: type,
           title: title || (type === "training" ? "Training" : `Spiel gegen ${opponent}`),
           opponent: type === "game" ? opponent : null,
-          home_away: type === "game" ? homeAway : null,
+          homeAway: type === "game" ? homeAway : null,
           location: location || null,
-          meeting_point: meeting || null,
-          event_at: d.toISOString(),
+          meetingPoint: meeting || null,
+          eventAt: d.toISOString(),
           description: desc || null,
-          group_id: groupId,
-          trainer_id: user.user.id,
+          groupId: Number(groupId),
         };
       });
-      const { error } = await supabase.from("events").insert(rows);
-      if (error) throw error;
-      return rows.length;
+      const { count: created } = await api.events.create(rows);
+      return created;
     },
     onSuccess: (n) => {
       toast.success(n && n > 1 ? `${n} Trainings erstellt` : "Ereignis erstellt");
@@ -181,7 +166,7 @@ function CreateEventDialog({ onCreated }: { onCreated: () => void }) {
             <Select value={groupId} onValueChange={setGroupId}>
               <SelectTrigger><SelectValue placeholder="Wählen…" /></SelectTrigger>
               <SelectContent>
-                {(groupsQ.data ?? []).map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                {(groupsQ.data ?? []).map((g) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

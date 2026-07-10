@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-// TODO: Replace supabase with backend API calls
+import { api } from "@/lib/api-client";
 import { motion } from "framer-motion";
 import { Users, CalendarDays, Trophy, Activity, ArrowRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,28 +15,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 function Dashboard() {
   const q = useQuery({
     queryKey: ["trainer-dashboard"],
-    queryFn: async () => {
-      const [{ count: groupsCount }, { count: playersCount }, upcoming, attRes] = await Promise.all([
-        supabase.from("groups").select("*", { count: "exact", head: true }),
-        supabase.from("players").select("*", { count: "exact", head: true }),
-        supabase
-          .from("events")
-          .select("id, event_type, title, event_at, opponent, groups(name)")
-          .gte("event_at", new Date().toISOString())
-          .order("event_at", { ascending: true })
-          .limit(5),
-        supabase.from("attendances").select("status"),
-      ]);
-      const all = attRes.data ?? [];
-      const acc = all.filter((a) => a.status === "accepted").length;
-      const rate = all.length ? Math.round((acc / all.length) * 100) : 0;
-      return {
-        groups: groupsCount ?? 0,
-        players: playersCount ?? 0,
-        upcoming: upcoming.data ?? [],
-        rate,
-      };
-    },
+    queryFn: () => api.stats.dashboard(),
   });
 
   const stats = [
@@ -93,7 +72,7 @@ function Dashboard() {
                 <li key={e.id}>
                   <Link
                     to="/events/$eventId"
-                    params={{ eventId: e.id }}
+                    params={{ eventId: String(e.id) }}
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition"
                   >
                     <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${e.event_type === "training" ? "bg-primary/15 text-primary" : "bg-chart-2/15 text-chart-2"}`}>

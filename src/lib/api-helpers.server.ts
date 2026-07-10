@@ -46,6 +46,20 @@ export async function handle(fn: () => Promise<Response>): Promise<Response> {
   }
 }
 
+export function intParam(value: string | undefined, name: string): number {
+  const n = Number(value);
+  if (!value || !Number.isInteger(n) || n <= 0) {
+    throw new HttpError(`Ungültiger Parameter: ${name}`, 400);
+  }
+  return n;
+}
+
+// Reicht den Bearer-Token des Trainers ans Backend weiter; die Validierung übernimmt das Backend.
+export function forwardAuthHeaders(request: Request): Record<string, string> {
+  const auth = request.headers.get("authorization") ?? request.headers.get("Authorization");
+  return auth ? { authorization: auth } : {};
+}
+
 export async function requireTrainerUser(request: Request): Promise<{ userId: string; email: string | null }> {
   const authHeader = request.headers.get("authorization") ?? request.headers.get("Authorization");
   if (!authHeader?.toLowerCase().startsWith("bearer ")) {
@@ -57,9 +71,8 @@ export async function requireTrainerUser(request: Request): Promise<{ userId: st
   // Proxy token verification to backend service
   const { callBackend } = await import("@/lib/backend-client.server.ts");
   try {
-    const resp = await callBackend("/auth/verify", { method: "POST", body: { token } });
-    // expect { userId: string, email: string | null }
-    return { userId: resp.userId, email: resp.email ?? null };
+    const resp = await callBackend<{ userId: number; email: string | null }>("/auth/verify", { method: "POST", body: { token } });
+    return { userId: String(resp.userId), email: resp.email ?? null };
   } catch (e) {
     throw new HttpError("Unauthorized", 401);
   }

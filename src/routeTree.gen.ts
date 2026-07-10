@@ -17,15 +17,25 @@ import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authentic
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as ApiGroupsIndexRouteImport } from './routes/api/groups.index'
+import { Route as ApiEventsIndexRouteImport } from './routes/api/events.index'
 import { Route as AuthenticatedGroupsIndexRouteImport } from './routes/_authenticated/groups.index'
 import { Route as AuthenticatedEventsIndexRouteImport } from './routes/_authenticated/events.index'
+import { Route as ApiStatsDashboardRouteImport } from './routes/api/stats.dashboard'
+import { Route as ApiStatsAttendanceRouteImport } from './routes/api/stats.attendance'
+import { Route as ApiPlayersPlayerIdRouteImport } from './routes/api/players.$playerId'
 import { Route as ApiPlayerOverviewRouteImport } from './routes/api/player.overview'
 import { Route as ApiPlayerLoginRouteImport } from './routes/api/player.login'
 import { Route as ApiPlayerAttendanceRouteImport } from './routes/api/player.attendance'
+import { Route as ApiGroupsGroupIdRouteImport } from './routes/api/groups.$groupId'
+import { Route as ApiEventsEventIdRouteImport } from './routes/api/events.$eventId'
 import { Route as ApiAuthSignupRouteImport } from './routes/api/auth.signup'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth.login'
+import { Route as ApiAttendancesAttendanceIdRouteImport } from './routes/api/attendances.$attendanceId'
 import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
 import { Route as AuthenticatedEventsEventIdRouteImport } from './routes/_authenticated/events.$eventId'
+import { Route as ApiGroupsGroupIdPlayersRouteImport } from './routes/api/groups.$groupId.players'
+import { Route as ApiEventsEventIdAttendancesRouteImport } from './routes/api/events.$eventId.attendances'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -66,6 +76,16 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiGroupsIndexRoute = ApiGroupsIndexRouteImport.update({
+  id: '/api/groups/',
+  path: '/api/groups/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEventsIndexRoute = ApiEventsIndexRouteImport.update({
+  id: '/api/events/',
+  path: '/api/events/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedGroupsIndexRoute =
   AuthenticatedGroupsIndexRouteImport.update({
     id: '/',
@@ -78,6 +98,21 @@ const AuthenticatedEventsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedEventsRoute,
   } as any)
+const ApiStatsDashboardRoute = ApiStatsDashboardRouteImport.update({
+  id: '/api/stats/dashboard',
+  path: '/api/stats/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStatsAttendanceRoute = ApiStatsAttendanceRouteImport.update({
+  id: '/api/stats/attendance',
+  path: '/api/stats/attendance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayersPlayerIdRoute = ApiPlayersPlayerIdRouteImport.update({
+  id: '/api/players/$playerId',
+  path: '/api/players/$playerId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPlayerOverviewRoute = ApiPlayerOverviewRouteImport.update({
   id: '/api/player/overview',
   path: '/api/player/overview',
@@ -93,6 +128,16 @@ const ApiPlayerAttendanceRoute = ApiPlayerAttendanceRouteImport.update({
   path: '/api/player/attendance',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGroupsGroupIdRoute = ApiGroupsGroupIdRouteImport.update({
+  id: '/api/groups/$groupId',
+  path: '/api/groups/$groupId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEventsEventIdRoute = ApiEventsEventIdRouteImport.update({
+  id: '/api/events/$eventId',
+  path: '/api/events/$eventId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSignupRoute = ApiAuthSignupRouteImport.update({
   id: '/api/auth/signup',
   path: '/api/auth/signup',
@@ -103,6 +148,12 @@ const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
   path: '/api/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAttendancesAttendanceIdRoute =
+  ApiAttendancesAttendanceIdRouteImport.update({
+    id: '/api/attendances/$attendanceId',
+    path: '/api/attendances/$attendanceId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedGroupsGroupIdRoute =
   AuthenticatedGroupsGroupIdRouteImport.update({
     id: '/$groupId',
@@ -115,6 +166,17 @@ const AuthenticatedEventsEventIdRoute =
     path: '/$eventId',
     getParentRoute: () => AuthenticatedEventsRoute,
   } as any)
+const ApiGroupsGroupIdPlayersRoute = ApiGroupsGroupIdPlayersRouteImport.update({
+  id: '/players',
+  path: '/players',
+  getParentRoute: () => ApiGroupsGroupIdRoute,
+} as any)
+const ApiEventsEventIdAttendancesRoute =
+  ApiEventsEventIdAttendancesRouteImport.update({
+    id: '/attendances',
+    path: '/attendances',
+    getParentRoute: () => ApiEventsEventIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -126,13 +188,23 @@ export interface FileRoutesByFullPath {
   '/player/': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
+  '/api/attendances/$attendanceId': typeof ApiAttendancesAttendanceIdRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/events/$eventId': typeof ApiEventsEventIdRouteWithChildren
+  '/api/groups/$groupId': typeof ApiGroupsGroupIdRouteWithChildren
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
+  '/api/players/$playerId': typeof ApiPlayersPlayerIdRoute
+  '/api/stats/attendance': typeof ApiStatsAttendanceRoute
+  '/api/stats/dashboard': typeof ApiStatsDashboardRoute
   '/events/': typeof AuthenticatedEventsIndexRoute
   '/groups/': typeof AuthenticatedGroupsIndexRoute
+  '/api/events/': typeof ApiEventsIndexRoute
+  '/api/groups/': typeof ApiGroupsIndexRoute
+  '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
+  '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -142,13 +214,23 @@ export interface FileRoutesByTo {
   '/player': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
+  '/api/attendances/$attendanceId': typeof ApiAttendancesAttendanceIdRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/events/$eventId': typeof ApiEventsEventIdRouteWithChildren
+  '/api/groups/$groupId': typeof ApiGroupsGroupIdRouteWithChildren
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
+  '/api/players/$playerId': typeof ApiPlayersPlayerIdRoute
+  '/api/stats/attendance': typeof ApiStatsAttendanceRoute
+  '/api/stats/dashboard': typeof ApiStatsDashboardRoute
   '/events': typeof AuthenticatedEventsIndexRoute
   '/groups': typeof AuthenticatedGroupsIndexRoute
+  '/api/events': typeof ApiEventsIndexRoute
+  '/api/groups': typeof ApiGroupsIndexRoute
+  '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
+  '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -162,13 +244,23 @@ export interface FileRoutesById {
   '/player/': typeof PlayerIndexRoute
   '/_authenticated/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
+  '/api/attendances/$attendanceId': typeof ApiAttendancesAttendanceIdRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/events/$eventId': typeof ApiEventsEventIdRouteWithChildren
+  '/api/groups/$groupId': typeof ApiGroupsGroupIdRouteWithChildren
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
+  '/api/players/$playerId': typeof ApiPlayersPlayerIdRoute
+  '/api/stats/attendance': typeof ApiStatsAttendanceRoute
+  '/api/stats/dashboard': typeof ApiStatsDashboardRoute
   '/_authenticated/events/': typeof AuthenticatedEventsIndexRoute
   '/_authenticated/groups/': typeof AuthenticatedGroupsIndexRoute
+  '/api/events/': typeof ApiEventsIndexRoute
+  '/api/groups/': typeof ApiGroupsIndexRoute
+  '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
+  '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -182,13 +274,23 @@ export interface FileRouteTypes {
     | '/player/'
     | '/events/$eventId'
     | '/groups/$groupId'
+    | '/api/attendances/$attendanceId'
     | '/api/auth/login'
     | '/api/auth/signup'
+    | '/api/events/$eventId'
+    | '/api/groups/$groupId'
     | '/api/player/attendance'
     | '/api/player/login'
     | '/api/player/overview'
+    | '/api/players/$playerId'
+    | '/api/stats/attendance'
+    | '/api/stats/dashboard'
     | '/events/'
     | '/groups/'
+    | '/api/events/'
+    | '/api/groups/'
+    | '/api/events/$eventId/attendances'
+    | '/api/groups/$groupId/players'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -198,13 +300,23 @@ export interface FileRouteTypes {
     | '/player'
     | '/events/$eventId'
     | '/groups/$groupId'
+    | '/api/attendances/$attendanceId'
     | '/api/auth/login'
     | '/api/auth/signup'
+    | '/api/events/$eventId'
+    | '/api/groups/$groupId'
     | '/api/player/attendance'
     | '/api/player/login'
     | '/api/player/overview'
+    | '/api/players/$playerId'
+    | '/api/stats/attendance'
+    | '/api/stats/dashboard'
     | '/events'
     | '/groups'
+    | '/api/events'
+    | '/api/groups'
+    | '/api/events/$eventId/attendances'
+    | '/api/groups/$groupId/players'
   id:
     | '__root__'
     | '/'
@@ -217,13 +329,23 @@ export interface FileRouteTypes {
     | '/player/'
     | '/_authenticated/events/$eventId'
     | '/_authenticated/groups/$groupId'
+    | '/api/attendances/$attendanceId'
     | '/api/auth/login'
     | '/api/auth/signup'
+    | '/api/events/$eventId'
+    | '/api/groups/$groupId'
     | '/api/player/attendance'
     | '/api/player/login'
     | '/api/player/overview'
+    | '/api/players/$playerId'
+    | '/api/stats/attendance'
+    | '/api/stats/dashboard'
     | '/_authenticated/events/'
     | '/_authenticated/groups/'
+    | '/api/events/'
+    | '/api/groups/'
+    | '/api/events/$eventId/attendances'
+    | '/api/groups/$groupId/players'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -231,11 +353,19 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   PlayerIndexRoute: typeof PlayerIndexRoute
+  ApiAttendancesAttendanceIdRoute: typeof ApiAttendancesAttendanceIdRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthSignupRoute: typeof ApiAuthSignupRoute
+  ApiEventsEventIdRoute: typeof ApiEventsEventIdRouteWithChildren
+  ApiGroupsGroupIdRoute: typeof ApiGroupsGroupIdRouteWithChildren
   ApiPlayerAttendanceRoute: typeof ApiPlayerAttendanceRoute
   ApiPlayerLoginRoute: typeof ApiPlayerLoginRoute
   ApiPlayerOverviewRoute: typeof ApiPlayerOverviewRoute
+  ApiPlayersPlayerIdRoute: typeof ApiPlayersPlayerIdRoute
+  ApiStatsAttendanceRoute: typeof ApiStatsAttendanceRoute
+  ApiStatsDashboardRoute: typeof ApiStatsDashboardRoute
+  ApiEventsIndexRoute: typeof ApiEventsIndexRoute
+  ApiGroupsIndexRoute: typeof ApiGroupsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -296,6 +426,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/groups/': {
+      id: '/api/groups/'
+      path: '/api/groups'
+      fullPath: '/api/groups/'
+      preLoaderRoute: typeof ApiGroupsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/events/': {
+      id: '/api/events/'
+      path: '/api/events'
+      fullPath: '/api/events/'
+      preLoaderRoute: typeof ApiEventsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/groups/': {
       id: '/_authenticated/groups/'
       path: '/'
@@ -309,6 +453,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/events/'
       preLoaderRoute: typeof AuthenticatedEventsIndexRouteImport
       parentRoute: typeof AuthenticatedEventsRoute
+    }
+    '/api/stats/dashboard': {
+      id: '/api/stats/dashboard'
+      path: '/api/stats/dashboard'
+      fullPath: '/api/stats/dashboard'
+      preLoaderRoute: typeof ApiStatsDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stats/attendance': {
+      id: '/api/stats/attendance'
+      path: '/api/stats/attendance'
+      fullPath: '/api/stats/attendance'
+      preLoaderRoute: typeof ApiStatsAttendanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/players/$playerId': {
+      id: '/api/players/$playerId'
+      path: '/api/players/$playerId'
+      fullPath: '/api/players/$playerId'
+      preLoaderRoute: typeof ApiPlayersPlayerIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/player/overview': {
       id: '/api/player/overview'
@@ -331,6 +496,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPlayerAttendanceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/groups/$groupId': {
+      id: '/api/groups/$groupId'
+      path: '/api/groups/$groupId'
+      fullPath: '/api/groups/$groupId'
+      preLoaderRoute: typeof ApiGroupsGroupIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/events/$eventId': {
+      id: '/api/events/$eventId'
+      path: '/api/events/$eventId'
+      fullPath: '/api/events/$eventId'
+      preLoaderRoute: typeof ApiEventsEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/signup': {
       id: '/api/auth/signup'
       path: '/api/auth/signup'
@@ -343,6 +522,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/login'
       fullPath: '/api/auth/login'
       preLoaderRoute: typeof ApiAuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/attendances/$attendanceId': {
+      id: '/api/attendances/$attendanceId'
+      path: '/api/attendances/$attendanceId'
+      fullPath: '/api/attendances/$attendanceId'
+      preLoaderRoute: typeof ApiAttendancesAttendanceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/groups/$groupId': {
@@ -358,6 +544,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/events/$eventId'
       preLoaderRoute: typeof AuthenticatedEventsEventIdRouteImport
       parentRoute: typeof AuthenticatedEventsRoute
+    }
+    '/api/groups/$groupId/players': {
+      id: '/api/groups/$groupId/players'
+      path: '/players'
+      fullPath: '/api/groups/$groupId/players'
+      preLoaderRoute: typeof ApiGroupsGroupIdPlayersRouteImport
+      parentRoute: typeof ApiGroupsGroupIdRoute
+    }
+    '/api/events/$eventId/attendances': {
+      id: '/api/events/$eventId/attendances'
+      path: '/attendances'
+      fullPath: '/api/events/$eventId/attendances'
+      preLoaderRoute: typeof ApiEventsEventIdAttendancesRouteImport
+      parentRoute: typeof ApiEventsEventIdRoute
     }
   }
 }
@@ -405,16 +605,46 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiEventsEventIdRouteChildren {
+  ApiEventsEventIdAttendancesRoute: typeof ApiEventsEventIdAttendancesRoute
+}
+
+const ApiEventsEventIdRouteChildren: ApiEventsEventIdRouteChildren = {
+  ApiEventsEventIdAttendancesRoute: ApiEventsEventIdAttendancesRoute,
+}
+
+const ApiEventsEventIdRouteWithChildren =
+  ApiEventsEventIdRoute._addFileChildren(ApiEventsEventIdRouteChildren)
+
+interface ApiGroupsGroupIdRouteChildren {
+  ApiGroupsGroupIdPlayersRoute: typeof ApiGroupsGroupIdPlayersRoute
+}
+
+const ApiGroupsGroupIdRouteChildren: ApiGroupsGroupIdRouteChildren = {
+  ApiGroupsGroupIdPlayersRoute: ApiGroupsGroupIdPlayersRoute,
+}
+
+const ApiGroupsGroupIdRouteWithChildren =
+  ApiGroupsGroupIdRoute._addFileChildren(ApiGroupsGroupIdRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   PlayerIndexRoute: PlayerIndexRoute,
+  ApiAttendancesAttendanceIdRoute: ApiAttendancesAttendanceIdRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthSignupRoute: ApiAuthSignupRoute,
+  ApiEventsEventIdRoute: ApiEventsEventIdRouteWithChildren,
+  ApiGroupsGroupIdRoute: ApiGroupsGroupIdRouteWithChildren,
   ApiPlayerAttendanceRoute: ApiPlayerAttendanceRoute,
   ApiPlayerLoginRoute: ApiPlayerLoginRoute,
   ApiPlayerOverviewRoute: ApiPlayerOverviewRoute,
+  ApiPlayersPlayerIdRoute: ApiPlayersPlayerIdRoute,
+  ApiStatsAttendanceRoute: ApiStatsAttendanceRoute,
+  ApiStatsDashboardRoute: ApiStatsDashboardRoute,
+  ApiEventsIndexRoute: ApiEventsIndexRoute,
+  ApiGroupsIndexRoute: ApiGroupsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

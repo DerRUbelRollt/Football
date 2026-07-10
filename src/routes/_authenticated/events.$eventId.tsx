@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-// TODO: Replace supabase with backend API calls
+import { api } from "@/lib/api-client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,31 +25,18 @@ function EventDetail() {
 
   const eventQ = useQuery({
     queryKey: ["event", eventId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("events").select("*, groups(name)").eq("id", eventId).maybeSingle();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => api.events.get(eventId),
   });
 
   const attQ = useQuery({
     queryKey: ["event-att", eventId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("attendances")
-        .select("id, status, players(id, first_name, last_name, player_code)")
-        .eq("event_id", eventId);
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => api.events.attendances(eventId),
   });
 
   const del = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("events").delete().eq("id", eventId);
-      if (error) throw error;
-    },
+    mutationFn: () => api.events.remove(eventId),
     onSuccess: () => { toast.success("Ereignis gelöscht"); nav({ to: "/events" }); },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const e = eventQ.data;
@@ -146,9 +133,12 @@ function EventDetail() {
                   <div className="text-xs text-muted-foreground font-mono">{a.players.player_code}</div>
                 </div>
                 <StatusPill status={a.status} onChange={async (s) => {
-                  const { error } = await supabase.from("attendances").update({ status: s, updated_at: new Date().toISOString() }).eq("id", a.id);
-                  if (error) toast.error(error.message);
-                  else { qc.invalidateQueries({ queryKey: ["event-att", eventId] }); }
+                  try {
+                    await api.attendances.setStatus(a.id, s);
+                    qc.invalidateQueries({ queryKey: ["event-att", eventId] });
+                  } catch (err) {
+                    toast.error((err as Error).message);
+                  }
                 }} />
               </li>
             ))}

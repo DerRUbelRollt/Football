@@ -33,7 +33,7 @@ function PlayerHome() {
   });
 
   const m = useMutation({
-    mutationFn: (vars: { eventId: string; status: "accepted" | "declined" }) =>
+    mutationFn: (vars: { eventId: number; status: "accepted" | "declined" }) =>
       api.player.setAttendance({ code: code!, eventId: vars.eventId, status: vars.status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["player-overview"] }),
     onError: (e) => toast.error(e instanceof ApiError ? e.message : (e as Error).message),

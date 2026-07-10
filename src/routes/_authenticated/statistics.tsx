@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-// TODO: Replace supabase with backend API calls
+import { api } from "@/lib/api-client";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, PieChart, Pie, Cell, Legend } from "recharts";
 import { BarChart3 } from "lucide-react";
 import { EmptyState } from "./dashboard";
@@ -13,13 +13,7 @@ export const Route = createFileRoute("/_authenticated/statistics")({
 function StatsPage() {
   const q = useQuery({
     queryKey: ["stats"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("attendances")
-        .select("status, players(id, first_name, last_name), events(event_at)");
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => api.stats.attendance(),
   });
 
   if (q.isLoading) return <div className="py-10 text-center text-muted-foreground">Lädt…</div>;
@@ -38,7 +32,7 @@ function StatsPage() {
   const now = Date.now();
   const past = items.filter((a: any) => a.events && new Date(a.events.event_at).getTime() < now);
 
-  const byPlayer = new Map<string, { name: string; accepted: number; declined: number; pending: number; total: number }>();
+  const byPlayer = new Map<number, { name: string; accepted: number; declined: number; pending: number; total: number }>();
   past.forEach((a: any) => {
     const key = a.players?.id;
     if (!key) return;
