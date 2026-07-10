@@ -21,6 +21,7 @@ import { Route as AuthenticatedGroupsIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedEventsIndexRouteImport } from './routes/_authenticated/events.index'
 import { Route as ApiPlayerOverviewRouteImport } from './routes/api/player.overview'
 import { Route as ApiPlayerLoginRouteImport } from './routes/api/player.login'
+import { Route as ApiPlayerAttendanceRouteImport } from './routes/api/player.attendance'
 import { Route as ApiAuthSignupRouteImport } from './routes/api/auth.signup'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth.login'
 import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
@@ -87,6 +88,11 @@ const ApiPlayerLoginRoute = ApiPlayerLoginRouteImport.update({
   path: '/api/player/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlayerAttendanceRoute = ApiPlayerAttendanceRouteImport.update({
+  id: '/api/player/attendance',
+  path: '/api/player/attendance',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSignupRoute = ApiAuthSignupRouteImport.update({
   id: '/api/auth/signup',
   path: '/api/auth/signup',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/events/': typeof AuthenticatedEventsIndexRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/events': typeof AuthenticatedEventsIndexRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/_authenticated/events/': typeof AuthenticatedEventsIndexRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/groups/$groupId'
     | '/api/auth/login'
     | '/api/auth/signup'
+    | '/api/player/attendance'
     | '/api/player/login'
     | '/api/player/overview'
     | '/events/'
@@ -190,6 +200,7 @@ export interface FileRouteTypes {
     | '/groups/$groupId'
     | '/api/auth/login'
     | '/api/auth/signup'
+    | '/api/player/attendance'
     | '/api/player/login'
     | '/api/player/overview'
     | '/events'
@@ -208,6 +219,7 @@ export interface FileRouteTypes {
     | '/_authenticated/groups/$groupId'
     | '/api/auth/login'
     | '/api/auth/signup'
+    | '/api/player/attendance'
     | '/api/player/login'
     | '/api/player/overview'
     | '/_authenticated/events/'
@@ -221,6 +233,7 @@ export interface RootRouteChildren {
   PlayerIndexRoute: typeof PlayerIndexRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthSignupRoute: typeof ApiAuthSignupRoute
+  ApiPlayerAttendanceRoute: typeof ApiPlayerAttendanceRoute
   ApiPlayerLoginRoute: typeof ApiPlayerLoginRoute
   ApiPlayerOverviewRoute: typeof ApiPlayerOverviewRoute
 }
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPlayerLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/player/attendance': {
+      id: '/api/player/attendance'
+      path: '/api/player/attendance'
+      fullPath: '/api/player/attendance'
+      preLoaderRoute: typeof ApiPlayerAttendanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/signup': {
       id: '/api/auth/signup'
       path: '/api/auth/signup'
@@ -392,6 +412,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlayerIndexRoute: PlayerIndexRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthSignupRoute: ApiAuthSignupRoute,
+  ApiPlayerAttendanceRoute: ApiPlayerAttendanceRoute,
   ApiPlayerLoginRoute: ApiPlayerLoginRoute,
   ApiPlayerOverviewRoute: ApiPlayerOverviewRoute,
 }
