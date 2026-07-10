@@ -19,6 +19,10 @@ import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedGroupsIndexRouteImport } from './routes/_authenticated/groups.index'
 import { Route as AuthenticatedEventsIndexRouteImport } from './routes/_authenticated/events.index'
+import { Route as ApiPlayerOverviewRouteImport } from './routes/api/player.overview'
+import { Route as ApiPlayerLoginRouteImport } from './routes/api/player.login'
+import { Route as ApiAuthSignupRouteImport } from './routes/api/auth.signup'
+import { Route as ApiAuthLoginRouteImport } from './routes/api/auth.login'
 import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
 import { Route as AuthenticatedEventsEventIdRouteImport } from './routes/_authenticated/events.$eventId'
 
@@ -73,6 +77,26 @@ const AuthenticatedEventsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedEventsRoute,
   } as any)
+const ApiPlayerOverviewRoute = ApiPlayerOverviewRouteImport.update({
+  id: '/api/player/overview',
+  path: '/api/player/overview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayerLoginRoute = ApiPlayerLoginRouteImport.update({
+  id: '/api/player/login',
+  path: '/api/player/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSignupRoute = ApiAuthSignupRouteImport.update({
+  id: '/api/auth/signup',
+  path: '/api/auth/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
+  id: '/api/auth/login',
+  path: '/api/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedGroupsGroupIdRoute =
   AuthenticatedGroupsGroupIdRouteImport.update({
     id: '/$groupId',
@@ -96,6 +120,10 @@ export interface FileRoutesByFullPath {
   '/player/': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/player/login': typeof ApiPlayerLoginRoute
+  '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/events/': typeof AuthenticatedEventsIndexRoute
   '/groups/': typeof AuthenticatedGroupsIndexRoute
 }
@@ -107,6 +135,10 @@ export interface FileRoutesByTo {
   '/player': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/player/login': typeof ApiPlayerLoginRoute
+  '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/events': typeof AuthenticatedEventsIndexRoute
   '/groups': typeof AuthenticatedGroupsIndexRoute
 }
@@ -122,6 +154,10 @@ export interface FileRoutesById {
   '/player/': typeof PlayerIndexRoute
   '/_authenticated/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/player/login': typeof ApiPlayerLoginRoute
+  '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/_authenticated/events/': typeof AuthenticatedEventsIndexRoute
   '/_authenticated/groups/': typeof AuthenticatedGroupsIndexRoute
 }
@@ -137,6 +173,10 @@ export interface FileRouteTypes {
     | '/player/'
     | '/events/$eventId'
     | '/groups/$groupId'
+    | '/api/auth/login'
+    | '/api/auth/signup'
+    | '/api/player/login'
+    | '/api/player/overview'
     | '/events/'
     | '/groups/'
   fileRoutesByTo: FileRoutesByTo
@@ -148,6 +188,10 @@ export interface FileRouteTypes {
     | '/player'
     | '/events/$eventId'
     | '/groups/$groupId'
+    | '/api/auth/login'
+    | '/api/auth/signup'
+    | '/api/player/login'
+    | '/api/player/overview'
     | '/events'
     | '/groups'
   id:
@@ -162,6 +206,10 @@ export interface FileRouteTypes {
     | '/player/'
     | '/_authenticated/events/$eventId'
     | '/_authenticated/groups/$groupId'
+    | '/api/auth/login'
+    | '/api/auth/signup'
+    | '/api/player/login'
+    | '/api/player/overview'
     | '/_authenticated/events/'
     | '/_authenticated/groups/'
   fileRoutesById: FileRoutesById
@@ -171,6 +219,10 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   PlayerIndexRoute: typeof PlayerIndexRoute
+  ApiAuthLoginRoute: typeof ApiAuthLoginRoute
+  ApiAuthSignupRoute: typeof ApiAuthSignupRoute
+  ApiPlayerLoginRoute: typeof ApiPlayerLoginRoute
+  ApiPlayerOverviewRoute: typeof ApiPlayerOverviewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -245,6 +297,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEventsIndexRouteImport
       parentRoute: typeof AuthenticatedEventsRoute
     }
+    '/api/player/overview': {
+      id: '/api/player/overview'
+      path: '/api/player/overview'
+      fullPath: '/api/player/overview'
+      preLoaderRoute: typeof ApiPlayerOverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player/login': {
+      id: '/api/player/login'
+      path: '/api/player/login'
+      fullPath: '/api/player/login'
+      preLoaderRoute: typeof ApiPlayerLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/signup': {
+      id: '/api/auth/signup'
+      path: '/api/auth/signup'
+      fullPath: '/api/auth/signup'
+      preLoaderRoute: typeof ApiAuthSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/login': {
+      id: '/api/auth/login'
+      path: '/api/auth/login'
+      fullPath: '/api/auth/login'
+      preLoaderRoute: typeof ApiAuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/groups/$groupId': {
       id: '/_authenticated/groups/$groupId'
       path: '/$groupId'
@@ -310,17 +390,11 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   PlayerIndexRoute: PlayerIndexRoute,
+  ApiAuthLoginRoute: ApiAuthLoginRoute,
+  ApiAuthSignupRoute: ApiAuthSignupRoute,
+  ApiPlayerLoginRoute: ApiPlayerLoginRoute,
+  ApiPlayerOverviewRoute: ApiPlayerOverviewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
