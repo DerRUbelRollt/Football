@@ -15,25 +15,28 @@ public class PlayerController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] CodeRequest req)
     {
-        var player = await _ctx.Players.Include(p => p.Group).FirstOrDefaultAsync(p => p.PlayerCode == req.Code.ToUpper());
+        var player = await _ctx.Players.Include(p => p.GroupMemberships).ThenInclude(m => m.Group).FirstOrDefaultAsync(p => p.PlayerCode == req.Code.ToUpper());
         if (player == null) return NotFound(new { error = "Ungültige Spieler-ID" });
-        return Ok(new { player = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = player.GroupId, groups = player.Group == null ? null : new { name = player.Group.Name } } });
+        var firstMembership = player.GroupMemberships.OrderBy(m => m.GroupId).FirstOrDefault();
+        return Ok(new { player = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = firstMembership?.GroupId ?? 0, groups = player.GroupMemberships.Select(m => new { name = m.Group!.Name }).ToList() } });
     }
 
     [HttpPost("overview")]
     public async Task<IActionResult> Overview([FromBody] CodeRequest req)
     {
-        var player = await _ctx.Players.Include(p => p.Group).FirstOrDefaultAsync(p => p.PlayerCode == req.Code.ToUpper());
+        var player = await _ctx.Players.Include(p => p.GroupMemberships).ThenInclude(m => m.Group).FirstOrDefaultAsync(p => p.PlayerCode == req.Code.ToUpper());
         if (player == null) return NotFound(new { error = "Ungültige Spieler-ID" });
 
+        var groupIds = player.GroupMemberships.Select(m => m.GroupId).ToList();
         var now = DateTime.UtcNow;
-        var upcoming = await _ctx.Events.Include(e => e.Group).Where(e => e.GroupId == player.GroupId && e.EventAt >= now).OrderBy(e => e.EventAt).ToListAsync();
-        var history = await _ctx.Events.Include(e => e.Group).Where(e => e.GroupId == player.GroupId && e.EventAt < now).OrderByDescending(e => e.EventAt).Take(50).ToListAsync();
+        var upcoming = await _ctx.Events.Include(e => e.Group).Where(e => groupIds.Contains(e.GroupId) && e.EventAt >= now).OrderBy(e => e.EventAt).ToListAsync();
+        var history = await _ctx.Events.Include(e => e.Group).Where(e => groupIds.Contains(e.GroupId) && e.EventAt < now).OrderByDescending(e => e.EventAt).Take(50).ToListAsync();
 
         var upList = upcoming.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, opponent = e.Opponent, home_away = e.HomeAway, location = e.Location, meeting_point = e.MeetingPoint, event_at = e.EventAt, description = e.Description, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { id = a.Id, status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
         var histList = history.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, event_at = e.EventAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
 
-        var p = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = player.GroupId, groups = player.Group == null ? null : new { name = player.Group.Name } };
+        var firstMembership = player.GroupMemberships.OrderBy(m => m.GroupId).FirstOrDefault();
+        var p = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = firstMembership?.GroupId ?? 0, groups = player.GroupMemberships.Select(m => new { name = m.Group!.Name }).ToList() };
 
         return Ok(new { player = p, upcoming = upList, history = histList });
     }

@@ -24,7 +24,7 @@ public class GroupsController : ControllerBase
                 id = g.Id,
                 name = g.Name,
                 description = g.Description,
-                player_count = _ctx.Players.Count(p => p.GroupId == g.Id)
+                player_count = _ctx.PlayerGroupMemberships.Count(m => m.GroupId == g.Id)
             })
             .ToListAsync();
         return Ok(groups);
@@ -66,10 +66,12 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> Players(int id)
     {
         if (TrainerAuth.FromRequest(Request) == null) return Unauthorized(new { error = "Unauthorized" });
-        var players = await _ctx.Players
-            .Where(p => p.GroupId == id)
-            .OrderBy(p => p.LastName).ThenBy(p => p.FirstName)
-            .Select(p => new { id = p.Id, first_name = p.FirstName, last_name = p.LastName, player_code = p.PlayerCode, group_id = p.GroupId })
+        var players = await _ctx.PlayerGroupMemberships
+            .Where(m => m.GroupId == id)
+            .Select(m => m.Player)
+            .Where(p => p != null)
+            .OrderBy(p => p!.LastName).ThenBy(p => p.FirstName)
+            .Select(p => new { id = p.Id, first_name = p.FirstName, last_name = p.LastName, player_code = p.PlayerCode, group_id = id })
             .ToListAsync();
         return Ok(players);
     }
@@ -92,8 +94,9 @@ public class GroupsController : ControllerBase
         }
         if (code == null) return Conflict(new { error = "Konnte keine eindeutige Spieler-ID generieren" });
 
-        var player = new Player { FirstName = req.FirstName.Trim(), LastName = req.LastName.Trim(), PlayerCode = code, GroupId = id };
+        var player = new Player { FirstName = req.FirstName.Trim(), LastName = req.LastName.Trim(), PlayerCode = code };
         _ctx.Players.Add(player);
+        _ctx.PlayerGroupMemberships.Add(new PlayerGroupMembership { Player = player, GroupId = id });
 
         // Für kommende Ereignisse der Mannschaft direkt offene Anwesenheiten anlegen,
         // damit der Spieler in den Teilnehmerlisten auftaucht.
@@ -105,7 +108,7 @@ public class GroupsController : ControllerBase
         }
 
         await _ctx.SaveChangesAsync();
-        return Ok(new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = player.GroupId });
+        return Ok(new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = id });
     }
 
     private static string GeneratePlayerCode()

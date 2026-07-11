@@ -91,7 +91,7 @@ export interface PlayerSummary {
   last_name: string;
   player_code: string;
   group_id: number;
-  groups: { name: string } | null;
+  groups: { name: string }[];
 }
 
 export interface PlayerOverview {
@@ -121,6 +121,13 @@ export interface PlayerRow {
   last_name: string;
   player_code: string;
   group_id: number;
+}
+
+export interface ExistingPlayerRow {
+  id: number;
+  first_name: string;
+  last_name: string;
+  player_code: string;
 }
 
 export interface EventListItem {
@@ -210,6 +217,11 @@ export const api = {
       apiFetch<PlayerRow>(`/api/groups/${groupId}/players`, { method: "POST", body, auth: true }),
   },
   players: {
+    list: () => apiFetch<ExistingPlayerRow[]>('/api/players', { auth: true }),
+    addToGroup: (playerId: number, body: { groupId: number }) =>
+      apiFetch<{ ok: true }>(`/api/players/${playerId}`, { method: "POST", body, auth: true }),
+    removeFromGroup: (playerId: number, groupId: number) =>
+      apiFetch<{ ok: true }>(`/api/players/${playerId}/groups/${groupId}`, { method: "DELETE", auth: true }),
     remove: (playerId: number) =>
       apiFetch<{ ok: true }>(`/api/players/${playerId}`, { method: "DELETE", auth: true }),
   },

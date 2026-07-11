@@ -1,6 +1,12 @@
 import { HttpError } from "@/lib/api-helpers.server";
 
-const DEFAULT_BACKEND_URLS = ["http://localhost:5001", "http://localhost:5002", "http://localhost:5003"];
+const DEFAULT_BACKEND_URLS = [
+  "http://127.0.0.1:5000",
+  "http://localhost:5000",
+  "http://localhost:5001",
+  "http://localhost:5002",
+  "http://localhost:5003",
+];
 
 function getBackendBaseUrls(): string[] {
   const configured = [process.env.BACKEND_URL, process.env.VITE_BACKEND_URL]

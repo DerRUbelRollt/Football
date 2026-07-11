@@ -6,6 +6,5 @@ public class Player
     public string FirstName { get; set; } = null!;
     public string LastName { get; set; } = null!;
     public string PlayerCode { get; set; } = null!;
-    public int GroupId { get; set; }
-    public Group? Group { get; set; }
+    public ICollection<PlayerGroupMembership> GroupMemberships { get; set; } = new List<PlayerGroupMembership>();
 }

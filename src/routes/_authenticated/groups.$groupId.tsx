@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,8 +46,8 @@ function GroupDetail() {
   });
 
   const deletePlayer = useMutation({
-    mutationFn: (id: number) => api.players.remove(id),
-    onSuccess: () => { toast.success("Spieler gelöscht"); qc.invalidateQueries({ queryKey: ["players", groupId] }); },
+    mutationFn: ({ playerId, groupId }: { playerId: number; groupId: number }) => api.players.removeFromGroup(playerId, groupId),
+    onSuccess: () => { toast.success("Spieler aus der Mannschaft entfernt"); qc.invalidateQueries({ queryKey: ["players", groupId] }); },
     onError: (e) => toast.error((e as Error).message),
   });
 
@@ -62,6 +62,7 @@ function GroupDetail() {
           {groupQ.data?.description && <p className="text-muted-foreground mt-1">{groupQ.data.description}</p>}
         </div>
         <div className="flex gap-2">
+          <AddExistingPlayerDialog groupId={groupId} onCreated={() => qc.invalidateQueries({ queryKey: ["players", groupId] })} />
           <AddPlayerDialog groupId={groupId} onCreated={() => qc.invalidateQueries({ queryKey: ["players", groupId] })} />
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -118,7 +119,7 @@ function GroupDetail() {
                     <AlertDialogHeader><AlertDialogTitle>Spieler löschen?</AlertDialogTitle></AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => deletePlayer.mutate(p.id)}>Löschen</AlertDialogAction>
+                      <AlertDialogAction onClick={() => deletePlayer.mutate({ playerId: p.id, groupId: Number(groupId) })}>Entfernen</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -128,6 +129,70 @@ function GroupDetail() {
         )}
       </div>
     </div>
+  );
+}
+
+function AddExistingPlayerDialog({ groupId, onCreated }: { groupId: string; onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+
+  const allPlayersQ = useQuery({
+    queryKey: ["all-players"],
+    queryFn: () => api.players.list(),
+    enabled: open,
+  });
+
+  const filteredPlayers = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return allPlayersQ.data ?? [];
+    return (allPlayersQ.data ?? []).filter((p) => `${p.first_name} ${p.last_name} ${p.player_code}`.toLowerCase().includes(q));
+  }, [allPlayersQ.data, query]);
+
+  const m = useMutation({
+    mutationFn: async () => {
+      if (selectedPlayerId == null) throw new Error("Bitte einen Spieler auswählen");
+      await api.players.addToGroup(selectedPlayerId, { groupId: Number(groupId) });
+    },
+    onSuccess: () => {
+      toast.success("Spieler zur Mannschaft hinzugefügt");
+      setQuery(""); setSelectedPlayerId(null); setOpen(false);
+      onCreated();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline"><Users className="h-4 w-4 mr-1" /> Existierenden</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Bestehenden Spieler hinzufügen</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Spieler suchen</Label>
+            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name oder ID" />
+          </div>
+          <div className="max-h-56 overflow-auto rounded-md border">
+            {allPlayersQ.isLoading ? <div className="p-3 text-sm text-muted-foreground">Lädt…</div> : filteredPlayers.length === 0 ? <div className="p-3 text-sm text-muted-foreground">Keine Spieler gefunden.</div> : <ul className="divide-y divide-border">{filteredPlayers.map((p) => (
+              <li key={p.id}>
+                <button type="button" className={`w-full flex items-center justify-between px-3 py-2 text-left ${selectedPlayerId === p.id ? "bg-secondary" : "hover:bg-secondary/50"}`} onClick={() => setSelectedPlayerId(p.id)}>
+                  <span>
+                    <div className="font-medium">{p.first_name} {p.last_name}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{p.player_code}</div>
+                  </span>
+                  <span className="text-xs text-muted-foreground">{selectedPlayerId === p.id ? "ausgewählt" : "auswählen"}</span>
+                </button>
+              </li>
+            ))}</ul>}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => m.mutate()} disabled={m.isPending || selectedPlayerId == null}>Hinzufügen</Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
