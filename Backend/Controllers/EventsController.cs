@@ -46,10 +46,10 @@ public class EventsController : ControllerBase
         var existing = await _ctx.Groups.Where(g => groupIds.Contains(g.Id)).Select(g => g.Id).ToListAsync();
         if (existing.Count != groupIds.Count) return NotFound(new { error = "Mannschaft nicht gefunden" });
 
-        var playersByGroup = await _ctx.Players
-            .Where(p => groupIds.Contains(p.GroupId))
-            .GroupBy(p => p.GroupId)
-            .ToDictionaryAsync(g => g.Key, g => g.Select(p => p.Id).ToList());
+        var playersByGroup = await _ctx.PlayerGroupMemberships
+            .Where(m => groupIds.Contains(m.GroupId))
+            .GroupBy(m => m.GroupId)
+            .ToDictionaryAsync(g => g.Key, g => g.Select(m => m.PlayerId).ToList());
 
         var now = DateTime.UtcNow;
         foreach (var row in rows)

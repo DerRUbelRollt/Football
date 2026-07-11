@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "dgSpecHash": "s9rp9ow5Y18=",
+  "success": true,
+  "projectFilePath": "D:\\vsCode\\Football\\npgsql-test\\npgsql-test.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\maxru\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.0\\microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512",
+    "C:\\Users\\maxru\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.0\\microsoft.extensions.logging.abstractions.8.0.0.nupkg.sha512",
+    "C:\\Users\\maxru\\.nuget\\packages\\npgsql\\8.0.0\\npgsql.8.0.0.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "message": "Das Paket \"Npgsql\" 8.0.0 weist eine bekannte hoch Schweregrad-Sicherheitsanfälligkeit auf, https://github.com/advisories/GHSA-x9vc-6hfv-hg8c.",
+      "projectPath": "D:\\vsCode\\Football\\npgsql-test\\npgsql-test.csproj",
+      "warningLevel": 1,
+      "filePath": "D:\\vsCode\\Football\\npgsql-test\\npgsql-test.csproj",
+      "libraryId": "Npgsql",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    }
+  ]
+}
