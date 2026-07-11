@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayerIndexRouteImport } from './routes/player.index'
+import { Route as ApiPlayersRouteImport } from './routes/api/players'
 import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authenticated/statistics'
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
@@ -36,6 +37,7 @@ import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authen
 import { Route as AuthenticatedEventsEventIdRouteImport } from './routes/_authenticated/events.$eventId'
 import { Route as ApiGroupsGroupIdPlayersRouteImport } from './routes/api/groups.$groupId.players'
 import { Route as ApiEventsEventIdAttendancesRouteImport } from './routes/api/events.$eventId.attendances'
+import { Route as ApiPlayersPlayerIdGroupsGroupIdRouteImport } from './routes/api/players.$playerId.groups.$groupId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -54,6 +56,11 @@ const IndexRoute = IndexRouteImport.update({
 const PlayerIndexRoute = PlayerIndexRouteImport.update({
   id: '/player/',
   path: '/player/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayersRoute = ApiPlayersRouteImport.update({
+  id: '/api/players',
+  path: '/api/players',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedStatisticsRoute = AuthenticatedStatisticsRouteImport.update({
@@ -109,9 +116,9 @@ const ApiStatsAttendanceRoute = ApiStatsAttendanceRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPlayersPlayerIdRoute = ApiPlayersPlayerIdRouteImport.update({
-  id: '/api/players/$playerId',
-  path: '/api/players/$playerId',
-  getParentRoute: () => rootRouteImport,
+  id: '/$playerId',
+  path: '/$playerId',
+  getParentRoute: () => ApiPlayersRoute,
 } as any)
 const ApiPlayerOverviewRoute = ApiPlayerOverviewRouteImport.update({
   id: '/api/player/overview',
@@ -177,6 +184,12 @@ const ApiEventsEventIdAttendancesRoute =
     path: '/attendances',
     getParentRoute: () => ApiEventsEventIdRoute,
   } as any)
+const ApiPlayersPlayerIdGroupsGroupIdRoute =
+  ApiPlayersPlayerIdGroupsGroupIdRouteImport.update({
+    id: '/groups/$groupId',
+    path: '/groups/$groupId',
+    getParentRoute: () => ApiPlayersPlayerIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -185,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/events': typeof AuthenticatedEventsRouteWithChildren
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/statistics': typeof AuthenticatedStatisticsRoute
+  '/api/players': typeof ApiPlayersRouteWithChildren
   '/player/': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
@@ -196,7 +210,7 @@ export interface FileRoutesByFullPath {
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
-  '/api/players/$playerId': typeof ApiPlayersPlayerIdRoute
+  '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
   '/events/': typeof AuthenticatedEventsIndexRoute
@@ -205,12 +219,14 @@ export interface FileRoutesByFullPath {
   '/api/groups/': typeof ApiGroupsIndexRoute
   '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
   '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
+  '/api/players/$playerId/groups/$groupId': typeof ApiPlayersPlayerIdGroupsGroupIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
+  '/api/players': typeof ApiPlayersRouteWithChildren
   '/player': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
@@ -222,7 +238,7 @@ export interface FileRoutesByTo {
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
-  '/api/players/$playerId': typeof ApiPlayersPlayerIdRoute
+  '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
   '/events': typeof AuthenticatedEventsIndexRoute
@@ -231,6 +247,7 @@ export interface FileRoutesByTo {
   '/api/groups': typeof ApiGroupsIndexRoute
   '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
   '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
+  '/api/players/$playerId/groups/$groupId': typeof ApiPlayersPlayerIdGroupsGroupIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -241,6 +258,7 @@ export interface FileRoutesById {
   '/_authenticated/events': typeof AuthenticatedEventsRouteWithChildren
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/_authenticated/statistics': typeof AuthenticatedStatisticsRoute
+  '/api/players': typeof ApiPlayersRouteWithChildren
   '/player/': typeof PlayerIndexRoute
   '/_authenticated/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
@@ -252,7 +270,7 @@ export interface FileRoutesById {
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
-  '/api/players/$playerId': typeof ApiPlayersPlayerIdRoute
+  '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
   '/_authenticated/events/': typeof AuthenticatedEventsIndexRoute
@@ -261,6 +279,7 @@ export interface FileRoutesById {
   '/api/groups/': typeof ApiGroupsIndexRoute
   '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
   '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
+  '/api/players/$playerId/groups/$groupId': typeof ApiPlayersPlayerIdGroupsGroupIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -271,6 +290,7 @@ export interface FileRouteTypes {
     | '/events'
     | '/groups'
     | '/statistics'
+    | '/api/players'
     | '/player/'
     | '/events/$eventId'
     | '/groups/$groupId'
@@ -291,12 +311,14 @@ export interface FileRouteTypes {
     | '/api/groups/'
     | '/api/events/$eventId/attendances'
     | '/api/groups/$groupId/players'
+    | '/api/players/$playerId/groups/$groupId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/dashboard'
     | '/statistics'
+    | '/api/players'
     | '/player'
     | '/events/$eventId'
     | '/groups/$groupId'
@@ -317,6 +339,7 @@ export interface FileRouteTypes {
     | '/api/groups'
     | '/api/events/$eventId/attendances'
     | '/api/groups/$groupId/players'
+    | '/api/players/$playerId/groups/$groupId'
   id:
     | '__root__'
     | '/'
@@ -326,6 +349,7 @@ export interface FileRouteTypes {
     | '/_authenticated/events'
     | '/_authenticated/groups'
     | '/_authenticated/statistics'
+    | '/api/players'
     | '/player/'
     | '/_authenticated/events/$eventId'
     | '/_authenticated/groups/$groupId'
@@ -346,12 +370,14 @@ export interface FileRouteTypes {
     | '/api/groups/'
     | '/api/events/$eventId/attendances'
     | '/api/groups/$groupId/players'
+    | '/api/players/$playerId/groups/$groupId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPlayersRoute: typeof ApiPlayersRouteWithChildren
   PlayerIndexRoute: typeof PlayerIndexRoute
   ApiAttendancesAttendanceIdRoute: typeof ApiAttendancesAttendanceIdRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
@@ -361,7 +387,6 @@ export interface RootRouteChildren {
   ApiPlayerAttendanceRoute: typeof ApiPlayerAttendanceRoute
   ApiPlayerLoginRoute: typeof ApiPlayerLoginRoute
   ApiPlayerOverviewRoute: typeof ApiPlayerOverviewRoute
-  ApiPlayersPlayerIdRoute: typeof ApiPlayersPlayerIdRoute
   ApiStatsAttendanceRoute: typeof ApiStatsAttendanceRoute
   ApiStatsDashboardRoute: typeof ApiStatsDashboardRoute
   ApiEventsIndexRoute: typeof ApiEventsIndexRoute
@@ -396,6 +421,13 @@ declare module '@tanstack/react-router' {
       path: '/player'
       fullPath: '/player/'
       preLoaderRoute: typeof PlayerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/players': {
+      id: '/api/players'
+      path: '/api/players'
+      fullPath: '/api/players'
+      preLoaderRoute: typeof ApiPlayersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/statistics': {
@@ -470,10 +502,10 @@ declare module '@tanstack/react-router' {
     }
     '/api/players/$playerId': {
       id: '/api/players/$playerId'
-      path: '/api/players/$playerId'
+      path: '/$playerId'
       fullPath: '/api/players/$playerId'
       preLoaderRoute: typeof ApiPlayersPlayerIdRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof ApiPlayersRoute
     }
     '/api/player/overview': {
       id: '/api/player/overview'
@@ -559,6 +591,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEventsEventIdAttendancesRouteImport
       parentRoute: typeof ApiEventsEventIdRoute
     }
+    '/api/players/$playerId/groups/$groupId': {
+      id: '/api/players/$playerId/groups/$groupId'
+      path: '/groups/$groupId'
+      fullPath: '/api/players/$playerId/groups/$groupId'
+      preLoaderRoute: typeof ApiPlayersPlayerIdGroupsGroupIdRouteImport
+      parentRoute: typeof ApiPlayersPlayerIdRoute
+    }
   }
 }
 
@@ -605,6 +644,29 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiPlayersPlayerIdRouteChildren {
+  ApiPlayersPlayerIdGroupsGroupIdRoute: typeof ApiPlayersPlayerIdGroupsGroupIdRoute
+}
+
+const ApiPlayersPlayerIdRouteChildren: ApiPlayersPlayerIdRouteChildren = {
+  ApiPlayersPlayerIdGroupsGroupIdRoute: ApiPlayersPlayerIdGroupsGroupIdRoute,
+}
+
+const ApiPlayersPlayerIdRouteWithChildren =
+  ApiPlayersPlayerIdRoute._addFileChildren(ApiPlayersPlayerIdRouteChildren)
+
+interface ApiPlayersRouteChildren {
+  ApiPlayersPlayerIdRoute: typeof ApiPlayersPlayerIdRouteWithChildren
+}
+
+const ApiPlayersRouteChildren: ApiPlayersRouteChildren = {
+  ApiPlayersPlayerIdRoute: ApiPlayersPlayerIdRouteWithChildren,
+}
+
+const ApiPlayersRouteWithChildren = ApiPlayersRoute._addFileChildren(
+  ApiPlayersRouteChildren,
+)
+
 interface ApiEventsEventIdRouteChildren {
   ApiEventsEventIdAttendancesRoute: typeof ApiEventsEventIdAttendancesRoute
 }
@@ -631,6 +693,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPlayersRoute: ApiPlayersRouteWithChildren,
   PlayerIndexRoute: PlayerIndexRoute,
   ApiAttendancesAttendanceIdRoute: ApiAttendancesAttendanceIdRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
@@ -640,7 +703,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPlayerAttendanceRoute: ApiPlayerAttendanceRoute,
   ApiPlayerLoginRoute: ApiPlayerLoginRoute,
   ApiPlayerOverviewRoute: ApiPlayerOverviewRoute,
-  ApiPlayersPlayerIdRoute: ApiPlayersPlayerIdRoute,
   ApiStatsAttendanceRoute: ApiStatsAttendanceRoute,
   ApiStatsDashboardRoute: ApiStatsDashboardRoute,
   ApiEventsIndexRoute: ApiEventsIndexRoute,

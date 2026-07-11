@@ -96,7 +96,9 @@ function PlayerHome() {
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Hallo {player.first_name} 👋</h1>
-          <p className="text-muted-foreground text-sm mt-1">{(player.groups as any)?.name}</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            {player.groups?.length ? player.groups.map((g: { name: string }) => g.name).join(" · ") : "Keine Mannschaften"}
+          </p>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

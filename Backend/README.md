@@ -23,5 +23,5 @@ dotnet run --project Backend/TeamCompass.Api.csproj
 The app listens on http://localhost:5000 and provides endpoints used by the frontend.
 
 ```To create the docker DB:
-docker run --name tc-postgres -e POSTGRES_PASSWORD=TeamCompass2024 -p 5432:5432 -d postgres:15
+docker run --name tc-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=TeamCompass2024 -p 5433:5432 -d postgres:15
 ```
