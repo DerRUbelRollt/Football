@@ -77,7 +77,7 @@ function EventsPage() {
                 {e.event_type === "training" ? <Activity className="h-5 w-5" /> : <Trophy className="h-5 w-5" />}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-semibold truncate">{e.title}{e.opponent ? ` vs ${e.opponent}` : ""}</div>
+                <div className="font-semibold truncate">{e.title}{e.opponent ? `` : ""}</div>
                 <div className="text-xs text-muted-foreground truncate">
                   {(e.groups as any)?.name} · {format(new Date(e.event_at), "EEE d. MMM yyyy · HH:mm", { locale: de })}
                   {e.location ? ` · ${e.location}` : ""}

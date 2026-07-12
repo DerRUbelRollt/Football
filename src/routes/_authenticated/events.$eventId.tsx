@@ -70,7 +70,7 @@ function EventDetail() {
                   {e.event_type === "training" ? "Training" : `Spiel${e.home_away ? ` · ${e.home_away === "home" ? "Heim" : "Auswärts"}` : ""}`}
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight mt-1">
-                  {e.title}{e.opponent ? ` vs ${e.opponent}` : ""}
+                  {e.title}{e.opponent ? `` : ""}
                 </h1>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
                   <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {format(new Date(e.event_at), "EEEE, d. MMMM yyyy · HH:mm", { locale: de })} Uhr</span>

@@ -134,7 +134,7 @@ function PlayerHome() {
                         <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
                           {e.event_type === "training" ? "Training" : `Spiel${e.home_away ? ` · ${e.home_away === "home" ? "Heim" : "Auswärts"}` : ""}`}
                         </div>
-                        <div className="font-bold text-lg mt-0.5">{e.title}{e.opponent ? ` vs ${e.opponent}` : ""}</div>
+                        <div className="font-bold text-lg mt-0.5">{e.title}{e.opponent ? `` : ""}</div>
                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-sm text-muted-foreground">
                           <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {format(new Date(e.event_at), "EEE d. MMM · HH:mm", { locale: de })}</span>
                           {e.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {e.location}</span>}
