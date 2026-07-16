@@ -1303,19 +1303,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\maxru\\.nuget\\packages\\": {}
+    "C:\\Users\\m.rubel\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\vsCode\\Football\\Backend\\TeamCompass.Api.csproj",
+      "projectUniqueName": "H:\\VsCode\\Football\\Backend\\TeamCompass.Api.csproj",
       "projectName": "TeamCompass.Api",
-      "projectPath": "D:\\vsCode\\Football\\Backend\\TeamCompass.Api.csproj",
-      "packagesPath": "C:\\Users\\maxru\\.nuget\\packages\\",
-      "outputPath": "D:\\vsCode\\Football\\Backend\\obj\\",
+      "projectPath": "H:\\VsCode\\Football\\Backend\\TeamCompass.Api.csproj",
+      "packagesPath": "C:\\Users\\m.rubel\\.nuget\\packages\\",
+      "outputPath": "H:\\VsCode\\Football\\Backend\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\maxru\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\m.rubel\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
@@ -1338,8 +1338,7 @@
         "enableAudit": "true",
         "auditLevel": "low",
         "auditMode": "direct"
-      },
-      "SdkAnalysisLevel": "10.0.200"
+      }
     },
     "frameworks": {
       "net8.0": {
@@ -1381,7 +1380,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.422/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

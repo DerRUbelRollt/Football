@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using TeamCompass.Api.Data;
 using TeamCompass.Api.Models;
 using TeamCompass.Api.Services;
@@ -22,11 +23,8 @@ public class AuthController : ControllerBase
         var res = ph.VerifyHashedPassword(user, user.PasswordHash, req.Password);
         if (res == PasswordVerificationResult.Failed) return Unauthorized(new { error = "Invalid credentials" });
         var token = SessionStore.CreateSession(user.Id, user.Email);
-        return Ok(new
-        {
-            session = new { access_token = token, refresh_token = token },
-            user = new { id = user.Id, email = user.Email }
-        });
+        SessionCookie.Append(Response, token);
+        return Ok(new { user = new { id = user.Id, email = user.Email } });
     }
 
     [HttpPost("signup")]
@@ -38,18 +36,36 @@ public class AuthController : ControllerBase
         _ctx.Trainers.Add(t);
         _ctx.SaveChanges();
         var token = SessionStore.CreateSession(t.Id, t.Email);
-        return Ok(new { session = new { access_token = token, refresh_token = token }, user = new { id = t.Id, email = t.Email } });
+        SessionCookie.Append(Response, token);
+        return Ok(new { user = new { id = t.Id, email = t.Email } });
     }
 
     [HttpPost("verify")]
-    public IActionResult Verify([FromBody] VerifyRequest req)
+    public IActionResult Verify([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] VerifyRequest? req)
     {
-        var v = SessionStore.Validate(req.Token);
-        if (v == null) return Unauthorized(new { error = "Unauthorized" });
+        var token = TrainerAuth.TokenFromRequest(Request) ?? req?.Token;
+        var v = token == null ? null : SessionStore.Validate(token);
+        if (v == null)
+        {
+            // Ungültiges/abgelaufenes Cookie direkt beim Client löschen.
+            if (Request.Cookies.ContainsKey(SessionCookie.Name)) SessionCookie.Delete(Response);
+            return Unauthorized(new { error = "Unauthorized" });
+        }
+        // Cookie neu ausstellen, damit die Max-Age im Browser mitgleitet.
+        SessionCookie.Append(Response, token!);
         return Ok(new { userId = v.Value.userId, email = v.Value.email });
+    }
+
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        var token = TrainerAuth.TokenFromRequest(Request);
+        if (!string.IsNullOrEmpty(token)) SessionStore.Remove(token);
+        SessionCookie.Delete(Response);
+        return Ok(new { ok = true });
     }
 }
 
 public record LoginRequest(string Email, string Password);
 public record SignupRequest(string Email, string Password, string? DisplayName);
-public record VerifyRequest(string Token);
+public record VerifyRequest(string? Token);

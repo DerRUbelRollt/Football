@@ -10,8 +10,9 @@ const DEFAULT_BACKEND_URLS = [
 ];
 
 function getBackendBaseUrls(): string[] {
-  const configured = [process.env.BACKEND_URL, process.env.VITE_BACKEND_URL]
-    .filter((value): value is string => Boolean(value && value.trim()));
+  const configured = [process.env.BACKEND_URL, process.env.VITE_BACKEND_URL].filter(
+    (value): value is string => Boolean(value && value.trim()),
+  );
 
   return Array.from(new Set([...configured, ...DEFAULT_BACKEND_URLS]));
 }
@@ -22,7 +23,18 @@ function buildUrl(baseUrl: string, path: string): string {
   return `${normalizedBase}${normalizedPath}`;
 }
 
-export async function callBackend<T = unknown>(path: string, options: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
+export interface BackendResult<T = unknown> {
+  ok: boolean;
+  status: number;
+  data: T;
+  /** Set-Cookie-Header des Backends, damit Routen sie an den Browser weiterreichen können. */
+  setCookies: string[];
+}
+
+export async function callBackendRaw<T = unknown>(
+  path: string,
+  options: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
+): Promise<BackendResult<T>> {
   const { method = "GET", body, headers = {} } = options;
 
   let lastError: unknown;
@@ -47,20 +59,39 @@ export async function callBackend<T = unknown>(path: string, options: { method?:
         }
       }
 
-      if (!response.ok) {
-        const message = typeof parsed === "object" && parsed !== null && "error" in parsed && typeof (parsed as { error?: unknown }).error === "string"
-          ? (parsed as { error: string }).error
-          : `Backend request failed with ${response.status}`;
-        // Das Backend hat geantwortet: Status durchreichen statt weitere URLs zu probieren.
-        throw new HttpError(message, response.status);
-      }
-
-      return parsed as T;
+      // Das Backend hat geantwortet (egal mit welchem Status): Ergebnis
+      // zurückgeben statt weitere URLs zu probieren.
+      return {
+        ok: response.ok,
+        status: response.status,
+        data: parsed as T,
+        setCookies: response.headers.getSetCookie(),
+      };
     } catch (error) {
-      if (error instanceof HttpError) throw error;
       lastError = error;
     }
   }
 
   throw lastError instanceof Error ? lastError : new Error("Backend unavailable");
+}
+
+export function httpErrorFromBackend(result: BackendResult): HttpError {
+  const parsed = result.data;
+  const message =
+    typeof parsed === "object" &&
+    parsed !== null &&
+    "error" in parsed &&
+    typeof (parsed as { error?: unknown }).error === "string"
+      ? (parsed as { error: string }).error
+      : `Backend request failed with ${result.status}`;
+  return new HttpError(message, result.status);
+}
+
+export async function callBackend<T = unknown>(
+  path: string,
+  options: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
+): Promise<T> {
+  const result = await callBackendRaw<T>(path, options);
+  if (!result.ok) throw httpErrorFromBackend(result);
+  return result.data;
 }

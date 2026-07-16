@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { setSessionTokens } from "@/lib/session";
 import { api, ApiError } from "@/lib/api-client";
 import { setPlayerCode } from "@/lib/player-session";
 import { Button } from "@/components/ui/button";
@@ -48,9 +47,7 @@ function AuthPage() {
 
         <div className="card-elevated p-6 sm:p-8">
           <RoleToggle mode={mode} onChange={setMode} />
-          <div className="mt-6">
-            {mode === "trainer" ? <TrainerForm /> : <PlayerForm />}
-          </div>
+          <div className="mt-6">{mode === "trainer" ? <TrainerForm /> : <PlayerForm />}</div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
@@ -98,10 +95,12 @@ function TrainerForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      const result = isSignup
-        ? await api.auth.signup({ email, password, displayName: displayName || undefined })
-        : await api.auth.login({ email, password });
-        setSessionTokens({ access_token: result.session.access_token, refresh_token: result.session.refresh_token });
+      // Die Session kommt als HttpOnly-Cookie mit der Antwort — nichts zu speichern.
+      if (isSignup) {
+        await api.auth.signup({ email, password, displayName: displayName || undefined });
+      } else {
+        await api.auth.login({ email, password });
+      }
       toast.success(isSignup ? "Konto erstellt. Willkommen!" : "Willkommen zurück!");
       nav({ to: "/dashboard" });
     } catch (err) {
@@ -124,18 +123,42 @@ function TrainerForm() {
       {isSignup && (
         <div className="space-y-2">
           <Label htmlFor="name">Anzeigename</Label>
-          <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Trainer Müller" />
+          <Input
+            id="name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Trainer Müller"
+          />
         </div>
       )}
       <div className="space-y-2">
         <Label htmlFor="email">E-Mail</Label>
-        <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="trainer@verein.de" />
+        <Input
+          id="email"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="trainer@verein.de"
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="pw">Passwort</Label>
-        <Input id="pw" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+        <Input
+          id="pw"
+          type="password"
+          required
+          minLength={8}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••"
+        />
       </div>
-      <Button type="submit" disabled={loading} className="w-full h-12 text-base font-semibold shadow-glow">
+      <Button
+        type="submit"
+        disabled={loading}
+        className="w-full h-12 text-base font-semibold shadow-glow"
+      >
         {loading ? "Bitte warten…" : isSignup ? "Konto erstellen" : "Anmelden"}
       </Button>
       <button
@@ -195,7 +218,11 @@ function PlayerForm() {
           Deine ID hast du von deinem Trainer erhalten.
         </p>
       </div>
-      <Button type="submit" disabled={loading} className="w-full h-12 text-base font-semibold shadow-glow">
+      <Button
+        type="submit"
+        disabled={loading}
+        className="w-full h-12 text-base font-semibold shadow-glow"
+      >
         {loading ? "Prüfe…" : "Anmelden"}
       </Button>
     </motion.form>

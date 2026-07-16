@@ -1,5 +1,3 @@
-import { getSessionTokens } from "./session";
-
 export class ApiError extends Error {
   status: number;
   details?: unknown;
@@ -15,12 +13,11 @@ type Method = "GET" | "POST" | "PATCH" | "DELETE";
 interface ApiFetchOptions {
   method?: Method;
   body?: unknown;
-  auth?: boolean; // attach trainer bearer token
   query?: Record<string, string | number | undefined>;
 }
 
 export async function apiFetch<T>(path: string, opts: ApiFetchOptions = {}): Promise<T> {
-  const { method = "GET", body, auth = false, query } = opts;
+  const { method = "GET", body, query } = opts;
 
   let url = path.startsWith("/") ? path : `/${path}`;
   if (query) {
@@ -33,15 +30,13 @@ export async function apiFetch<T>(path: string, opts: ApiFetchOptions = {}): Pro
   }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (auth) {
-    const s = getSessionTokens();
-    const token = s?.access_token ?? null;
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
 
+  // Die Trainer-Session läuft über ein HttpOnly-Cookie (tc_session),
+  // das der Browser bei Same-Origin-Requests automatisch mitschickt.
   const res = await fetch(url, {
     method,
     headers,
+    credentials: "same-origin",
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
@@ -56,9 +51,11 @@ export async function apiFetch<T>(path: string, opts: ApiFetchOptions = {}): Pro
   }
 
   if (!res.ok) {
-    const err = (parsed && typeof parsed === "object" && "error" in parsed
-      ? (parsed as { error: string }).error
-      : `Request failed (${res.status})`) as string;
+    const err = (
+      parsed && typeof parsed === "object" && "error" in parsed
+        ? (parsed as { error: string }).error
+        : `Request failed (${res.status})`
+    ) as string;
     throw new ApiError(err, res.status, parsed);
   }
 
@@ -67,21 +64,12 @@ export async function apiFetch<T>(path: string, opts: ApiFetchOptions = {}): Pro
 
 // ---------- Typed wrappers ----------
 
-export interface AuthSession {
-  access_token: string;
-  refresh_token: string;
-  expires_at?: number;
-  expires_in?: number;
-  token_type?: string;
-}
-
 export interface AuthUser {
-  id: string;
+  id: number;
   email: string | null;
 }
 
 export interface AuthResponse {
-  session: AuthSession;
   user: AuthUser;
 }
 
@@ -189,11 +177,9 @@ export const api = {
       apiFetch<AuthResponse>("/api/auth/login", { method: "POST", body }),
     signup: (body: { email: string; password: string; displayName?: string }) =>
       apiFetch<AuthResponse>("/api/auth/signup", { method: "POST", body }),
-    verify: (token: string) =>
-      apiFetch<{ userId: string; email: string | null }>("/api/auth/verify", {
-        method: "POST",
-        body: { token },
-      }),
+    verify: () =>
+      apiFetch<{ userId: number; email: string | null }>("/api/auth/verify", { method: "POST" }),
+    logout: () => apiFetch<{ ok: true }>("/api/auth/logout", { method: "POST" }),
   },
   player: {
     login: (body: { code: string }) =>
@@ -204,48 +190,44 @@ export const api = {
       apiFetch<{ ok: true }>("/api/player/attendance", { method: "POST", body }),
   },
   groups: {
-    list: () => apiFetch<GroupSummary[]>("/api/groups", { auth: true }),
+    list: () => apiFetch<GroupSummary[]>("/api/groups"),
     create: (body: { name: string; description: string | null }) =>
-      apiFetch<GroupDetail>("/api/groups", { method: "POST", body, auth: true }),
-    get: (groupId: string | number) =>
-      apiFetch<GroupDetail>(`/api/groups/${groupId}`, { auth: true }),
+      apiFetch<GroupDetail>("/api/groups", { method: "POST", body }),
+    get: (groupId: string | number) => apiFetch<GroupDetail>(`/api/groups/${groupId}`),
     remove: (groupId: string | number) =>
-      apiFetch<{ ok: true }>(`/api/groups/${groupId}`, { method: "DELETE", auth: true }),
-    players: (groupId: string | number) =>
-      apiFetch<PlayerRow[]>(`/api/groups/${groupId}/players`, { auth: true }),
+      apiFetch<{ ok: true }>(`/api/groups/${groupId}`, { method: "DELETE" }),
+    players: (groupId: string | number) => apiFetch<PlayerRow[]>(`/api/groups/${groupId}/players`),
     addPlayer: (groupId: string | number, body: { firstName: string; lastName: string }) =>
-      apiFetch<PlayerRow>(`/api/groups/${groupId}/players`, { method: "POST", body, auth: true }),
+      apiFetch<PlayerRow>(`/api/groups/${groupId}/players`, { method: "POST", body }),
   },
   players: {
-    list: () => apiFetch<ExistingPlayerRow[]>('/api/players', { auth: true }),
+    list: () => apiFetch<ExistingPlayerRow[]>("/api/players"),
     addToGroup: (playerId: number, body: { groupId: number }) =>
-      apiFetch<{ ok: true }>(`/api/players/${playerId}`, { method: "POST", body, auth: true }),
+      apiFetch<{ ok: true }>(`/api/players/${playerId}`, { method: "POST", body }),
     removeFromGroup: (playerId: number, groupId: number) =>
-      apiFetch<{ ok: true }>(`/api/players/${playerId}/groups/${groupId}`, { method: "DELETE", auth: true }),
+      apiFetch<{ ok: true }>(`/api/players/${playerId}/groups/${groupId}`, { method: "DELETE" }),
     remove: (playerId: number) =>
-      apiFetch<{ ok: true }>(`/api/players/${playerId}`, { method: "DELETE", auth: true }),
+      apiFetch<{ ok: true }>(`/api/players/${playerId}`, { method: "DELETE" }),
   },
   events: {
-    list: () => apiFetch<EventListItem[]>("/api/events", { auth: true }),
+    list: () => apiFetch<EventListItem[]>("/api/events"),
     create: (rows: NewEvent[]) =>
-      apiFetch<{ count: number }>("/api/events", { method: "POST", body: rows, auth: true }),
-    get: (eventId: string | number) =>
-      apiFetch<EventDetail>(`/api/events/${eventId}`, { auth: true }),
+      apiFetch<{ count: number }>("/api/events", { method: "POST", body: rows }),
+    get: (eventId: string | number) => apiFetch<EventDetail>(`/api/events/${eventId}`),
     remove: (eventId: string | number) =>
-      apiFetch<{ ok: true }>(`/api/events/${eventId}`, { method: "DELETE", auth: true }),
+      apiFetch<{ ok: true }>(`/api/events/${eventId}`, { method: "DELETE" }),
     attendances: (eventId: string | number) =>
-      apiFetch<EventAttendanceRow[]>(`/api/events/${eventId}/attendances`, { auth: true }),
+      apiFetch<EventAttendanceRow[]>(`/api/events/${eventId}/attendances`),
   },
   attendances: {
     setStatus: (attendanceId: number, status: AttendanceStatus) =>
       apiFetch<{ ok: true }>(`/api/attendances/${attendanceId}`, {
         method: "PATCH",
         body: { status },
-        auth: true,
       }),
   },
   stats: {
-    dashboard: () => apiFetch<DashboardStats>("/api/stats/dashboard", { auth: true }),
-    attendance: () => apiFetch<StatsAttendanceRow[]>("/api/stats/attendance", { auth: true }),
+    dashboard: () => apiFetch<DashboardStats>("/api/stats/dashboard"),
+    attendance: () => apiFetch<StatsAttendanceRow[]>("/api/stats/attendance"),
   },
 };

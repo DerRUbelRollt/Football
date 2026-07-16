@@ -1,6 +1,16 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Trophy, LayoutDashboard, Users, CalendarDays, BarChart3, LogOut, Menu, X } from "lucide-react";
+import {
+  Trophy,
+  LayoutDashboard,
+  Users,
+  CalendarDays,
+  BarChart3,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +27,11 @@ export function TrainerShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
   async function signOut() {
-    // TODO: Implement signOut via backend
+    try {
+      await api.auth.logout();
+    } catch {
+      // Session serverseitig ggf. schon weg — lokal trotzdem abmelden.
+    }
     navigate({ to: "/auth" });
   }
 
@@ -41,7 +55,9 @@ export function TrainerShell({ children }: { children: ReactNode }) {
                   to={item.to}
                   className={cn(
                     "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition",
-                    active ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    active
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary",
                   )}
                 >
                   <Icon className="h-4 w-4" /> {item.label}
@@ -53,7 +69,12 @@ export function TrainerShell({ children }: { children: ReactNode }) {
             <Button variant="ghost" size="sm" onClick={signOut} className="hidden sm:inline-flex">
               <LogOut className="h-4 w-4 mr-1" /> Abmelden
             </Button>
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen((v) => !v)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setOpen((v) => !v)}
+            >
               {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
@@ -73,7 +94,10 @@ export function TrainerShell({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
-            <button onClick={signOut} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-secondary w-full">
+            <button
+              onClick={signOut}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-secondary w-full"
+            >
               <LogOut className="h-4 w-4" /> Abmelden
             </button>
           </div>

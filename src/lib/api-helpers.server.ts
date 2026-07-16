@@ -1,10 +1,15 @@
 import { z } from "zod";
 
-export function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8" },
-  });
+export function jsonResponse(
+  data: unknown,
+  status = 200,
+  setCookies?: readonly string[],
+): Response {
+  const headers = new Headers({ "content-type": "application/json; charset=utf-8" });
+  for (const cookie of setCookies ?? []) {
+    headers.append("set-cookie", cookie);
+  }
+  return new Response(JSON.stringify(data), { status, headers });
 }
 
 export function errorResponse(message: string, status = 400, details?: unknown): Response {
@@ -54,26 +59,13 @@ export function intParam(value: string | undefined, name: string): number {
   return n;
 }
 
-// Reicht den Bearer-Token des Trainers ans Backend weiter; die Validierung übernimmt das Backend.
+// Reicht Session-Cookie und Bearer-Token des Trainers ans Backend weiter;
+// die Validierung übernimmt das Backend.
 export function forwardAuthHeaders(request: Request): Record<string, string> {
-  const auth = request.headers.get("authorization") ?? request.headers.get("Authorization");
-  return auth ? { authorization: auth } : {};
-}
-
-export async function requireTrainerUser(request: Request): Promise<{ userId: string; email: string | null }> {
-  const authHeader = request.headers.get("authorization") ?? request.headers.get("Authorization");
-  if (!authHeader?.toLowerCase().startsWith("bearer ")) {
-    throw new HttpError("Unauthorized", 401);
-  }
-  const token = authHeader.slice(7).trim();
-  if (!token) throw new HttpError("Unauthorized", 401);
-
-  // Proxy token verification to backend service
-  const { callBackend } = await import("@/lib/backend-client.server.ts");
-  try {
-    const resp = await callBackend<{ userId: number; email: string | null }>("/auth/verify", { method: "POST", body: { token } });
-    return { userId: String(resp.userId), email: resp.email ?? null };
-  } catch (e) {
-    throw new HttpError("Unauthorized", 401);
-  }
+  const headers: Record<string, string> = {};
+  const cookie = request.headers.get("cookie");
+  if (cookie) headers.cookie = cookie;
+  const auth = request.headers.get("authorization");
+  if (auth) headers.authorization = auth;
+  return headers;
 }
