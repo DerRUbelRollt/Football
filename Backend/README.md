@@ -32,3 +32,13 @@ Sessions
 - `POST /auth/logout` beendet die Session und löscht das Cookie.
 - Als Fallback (z. B. Swagger) wird weiterhin `Authorization: Bearer <token>` akzeptiert.
 - Sessions liegen in-memory: Ein Neustart des Backends meldet alle Trainer ab.
+
+Produktion
+
+- `appsettings.json` enthält nur nicht-geheime Defaults, `appsettings.Production.json` nur produktionsspezifische Overrides (z. B. Logging). Es liegt bewusst kein Connection-String in einer Datei, die eingecheckt wird.
+- Erforderliche Umgebungsvariablen beim Deploy setzen:
+  - `ASPNETCORE_ENVIRONMENT=Production`
+  - `ConnectionStrings__Default=Host=<host>;Port=<port>;Username=<user>;Password=<pass>;Database=<db>`
+  - `ASPNETCORE_URLS=http://0.0.0.0:<port>` (bzw. die Adresse, auf der der Reverse-Proxy den Prozess erwartet)
+- Fehlt `ConnectionStrings__Default` in einer Nicht-Development-Umgebung, bricht der Start mit einer klaren Fehlermeldung ab, statt still gegen die lokale Dev-Datenbank zu laufen.
+- Vor dem produktiven Rollout: `DbInitializer` nutzt aktuell `EnsureCreated()` und legt bei leerer DB automatisch einen Admin (`admin@local` / `adminpass`) an — das ist für Produktion nicht geeignet und sollte vorher durch echte EF-Migrationen ersetzt werden.

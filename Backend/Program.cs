@@ -16,7 +16,16 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var conn = builder.Configuration.GetConnectionString("Default") ?? "Host=127.0.0.1;Port=5433;Username=postgres;Password=TeamCompass2024;Database=team_compass_dev";
+var conn = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(conn))
+{
+    if (!builder.Environment.IsDevelopment())
+    {
+        throw new InvalidOperationException(
+            "ConnectionStrings:Default is not configured. Set it via the ConnectionStrings__Default environment variable.");
+    }
+    conn = "Host=127.0.0.1;Port=5433;Username=postgres;Password=TeamCompass2024;Database=team_compass_dev";
+}
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(conn));
 
 var app = builder.Build();

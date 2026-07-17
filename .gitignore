@@ -20,6 +20,10 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# .NET build output
+Backend/bin/
+Backend/obj/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
