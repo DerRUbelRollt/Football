@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, ArrowLeft, Copy, Trash2, KeyRound, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "./dashboard";
@@ -62,7 +63,7 @@ function GroupDetail() {
           {groupQ.data?.description && <p className="text-muted-foreground mt-1">{groupQ.data.description}</p>}
         </div>
         <div className="flex gap-2">
-          <AddExistingPlayerDialog groupId={groupId} onCreated={() => qc.invalidateQueries({ queryKey: ["players", groupId] })} />
+          <AddExistingPlayerDialog groupId={groupId} existingPlayerIds={(playersQ.data ?? []).map((p) => p.id)} onCreated={() => qc.invalidateQueries({ queryKey: ["players", groupId] })} />
           <AddPlayerDialog groupId={groupId} onCreated={() => qc.invalidateQueries({ queryKey: ["players", groupId] })} />
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -132,10 +133,10 @@ function GroupDetail() {
   );
 }
 
-function AddExistingPlayerDialog({ groupId, onCreated }: { groupId: string; onCreated: () => void }) {
+function AddExistingPlayerDialog({ groupId, existingPlayerIds, onCreated }: { groupId: string; existingPlayerIds: number[]; onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
 
   const allPlayersQ = useQuery({
     queryKey: ["all-players"],
@@ -144,19 +145,25 @@ function AddExistingPlayerDialog({ groupId, onCreated }: { groupId: string; onCr
   });
 
   const filteredPlayers = useMemo(() => {
+    const existingIds = new Set(existingPlayerIds);
+    const available = (allPlayersQ.data ?? []).filter((p) => !existingIds.has(p.id));
     const q = query.trim().toLowerCase();
-    if (!q) return allPlayersQ.data ?? [];
-    return (allPlayersQ.data ?? []).filter((p) => `${p.first_name} ${p.last_name} ${p.player_code}`.toLowerCase().includes(q));
-  }, [allPlayersQ.data, query]);
+    if (!q) return available;
+    return available.filter((p) => `${p.first_name} ${p.last_name} ${p.player_code}`.toLowerCase().includes(q));
+  }, [allPlayersQ.data, query, existingPlayerIds]);
+
+  const togglePlayer = (id: number) => {
+    setSelectedPlayerIds((cur) => cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
+  };
 
   const m = useMutation({
     mutationFn: async () => {
-      if (selectedPlayerId == null) throw new Error("Bitte einen Spieler auswählen");
-      await api.players.addToGroup(selectedPlayerId, { groupId: Number(groupId) });
+      if (selectedPlayerIds.length === 0) throw new Error("Bitte mindestens einen Spieler auswählen");
+      await Promise.all(selectedPlayerIds.map((id) => api.players.addToGroup(id, { groupId: Number(groupId) })));
     },
     onSuccess: () => {
-      toast.success("Spieler zur Mannschaft hinzugefügt");
-      setQuery(""); setSelectedPlayerId(null); setOpen(false);
+      toast.success(selectedPlayerIds.length > 1 ? `${selectedPlayerIds.length} Spieler zur Mannschaft hinzugefügt` : "Spieler zur Mannschaft hinzugefügt");
+      setQuery(""); setSelectedPlayerIds([]); setOpen(false);
       onCreated();
     },
     onError: (e) => toast.error((e as Error).message),
@@ -168,7 +175,7 @@ function AddExistingPlayerDialog({ groupId, onCreated }: { groupId: string; onCr
         <Button variant="outline"><Users className="h-4 w-4 mr-1" /> Existierenden</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Bestehenden Spieler hinzufügen</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Bestehende Spieler hinzufügen</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Spieler suchen</Label>
@@ -177,18 +184,20 @@ function AddExistingPlayerDialog({ groupId, onCreated }: { groupId: string; onCr
           <div className="max-h-56 overflow-auto rounded-md border">
             {allPlayersQ.isLoading ? <div className="p-3 text-sm text-muted-foreground">Lädt…</div> : filteredPlayers.length === 0 ? <div className="p-3 text-sm text-muted-foreground">Keine Spieler gefunden.</div> : <ul className="divide-y divide-border">{filteredPlayers.map((p) => (
               <li key={p.id}>
-                <button type="button" className={`w-full flex items-center justify-between px-3 py-2 text-left ${selectedPlayerId === p.id ? "bg-secondary" : "hover:bg-secondary/50"}`} onClick={() => setSelectedPlayerId(p.id)}>
-                  <span>
+                <button type="button" className={`w-full flex items-center gap-3 px-3 py-2 text-left ${selectedPlayerIds.includes(p.id) ? "bg-secondary" : "hover:bg-secondary/50"}`} onClick={() => togglePlayer(p.id)}>
+                  <Checkbox checked={selectedPlayerIds.includes(p.id)} onCheckedChange={() => togglePlayer(p.id)} onClick={(e) => e.stopPropagation()} />
+                  <span className="flex-1">
                     <div className="font-medium">{p.first_name} {p.last_name}</div>
                     <div className="text-xs text-muted-foreground font-mono">{p.player_code}</div>
                   </span>
-                  <span className="text-xs text-muted-foreground">{selectedPlayerId === p.id ? "ausgewählt" : "auswählen"}</span>
                 </button>
               </li>
             ))}</ul>}
           </div>
           <DialogFooter>
-            <Button onClick={() => m.mutate()} disabled={m.isPending || selectedPlayerId == null}>Hinzufügen</Button>
+            <Button onClick={() => m.mutate()} disabled={m.isPending || selectedPlayerIds.length === 0}>
+              Hinzufügen{selectedPlayerIds.length > 0 ? ` (${selectedPlayerIds.length})` : ""}
+            </Button>
           </DialogFooter>
         </div>
       </DialogContent>
