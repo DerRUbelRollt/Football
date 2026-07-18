@@ -106,11 +106,11 @@ Ab hier alle Befehle als `<dein-username>` mit `sudo`, nicht mehr als root.
 
 ## 2. Laufzeiten installieren
 
-**.NET 8 SDK** (in Ubuntu 24.04 direkt im Standard-Repo enthalten, kein extra Microsoft-Repo nötig):
+**.NET 10 SDK** (in Ubuntu 24.04 direkt im Standard-Repo enthalten, kein extra Microsoft-Repo nötig):
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y dotnet-sdk-8.0
+sudo apt-get install -y dotnet-sdk-10.0
 ```
 
 **Node.js 24 LTS** (über NodeSource, da Ubuntu 24.04 selbst eine ältere Node-Version mitbringt):

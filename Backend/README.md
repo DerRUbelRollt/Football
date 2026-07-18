@@ -2,7 +2,7 @@ Team Compass .NET Backend
 
 Requirements
 
-- .NET 8 SDK (e.g. 8.0.422)
+- .NET 10 SDK (e.g. 10.0.201)
 - PostgreSQL running locally (default connection in appsettings.Development.json)
 
 Default DB credentials (development)
