@@ -5,6 +5,7 @@ import {
   Users,
   CalendarDays,
   BarChart3,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -66,6 +67,11 @@ export function TrainerShell({ children }: { children: ReactNode }) {
             })}
           </nav>
           <div className="ml-auto flex items-center gap-2">
+            <Button variant="ghost" size="icon" asChild className="hidden sm:inline-flex">
+              <Link to="/settings">
+                <Settings className="h-4 w-4" />
+              </Link>
+            </Button>
             <Button variant="ghost" size="sm" onClick={signOut} className="hidden sm:inline-flex">
               <LogOut className="h-4 w-4 mr-1" /> Abmelden
             </Button>
@@ -94,6 +100,13 @@ export function TrainerShell({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
+            <Link
+              to="/settings"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-secondary"
+            >
+              <Settings className="h-4 w-4" /> Einstellungen
+            </Link>
             <button
               onClick={signOut}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-secondary w-full"

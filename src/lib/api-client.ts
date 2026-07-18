@@ -66,7 +66,7 @@ export async function apiFetch<T>(path: string, opts: ApiFetchOptions = {}): Pro
 
 export interface AuthUser {
   id: number;
-  email: string | null;
+  name: string;
 }
 
 export interface AuthResponse {
@@ -173,13 +173,15 @@ export interface StatsAttendanceRow {
 
 export const api = {
   auth: {
-    login: (body: { email: string; password: string }) =>
+    login: (body: { name: string; password: string }) =>
       apiFetch<AuthResponse>("/api/auth/login", { method: "POST", body }),
-    signup: (body: { email: string; password: string; displayName?: string }) =>
-      apiFetch<AuthResponse>("/api/auth/signup", { method: "POST", body }),
     verify: () =>
-      apiFetch<{ userId: number; email: string | null }>("/api/auth/verify", { method: "POST" }),
+      apiFetch<{ userId: number; name: string }>("/api/auth/verify", { method: "POST" }),
     logout: () => apiFetch<{ ok: true }>("/api/auth/logout", { method: "POST" }),
+    updateProfile: (body: { currentPassword: string; newName?: string; newPassword?: string }) =>
+      apiFetch<{ id: number; name: string }>("/api/auth/me", { method: "PATCH", body }),
+    createTrainer: (body: { name: string; password: string; currentPassword: string }) =>
+      apiFetch<{ id: number; name: string }>("/api/auth/trainers", { method: "POST", body }),
   },
   player: {
     login: (body: { code: string }) =>

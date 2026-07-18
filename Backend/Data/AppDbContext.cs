@@ -16,6 +16,10 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Trainer>()
+            .HasIndex(t => t.Name)
+            .IsUnique();
+
         modelBuilder.Entity<PlayerGroupMembership>()
             .HasIndex(m => new { m.PlayerId, m.GroupId })
             .IsUnique();

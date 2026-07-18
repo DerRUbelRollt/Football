@@ -10,6 +10,9 @@ export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
-    // server: {host: true},
+    // server: { host: true },
   },
+  // Zero-config Build bleibt Cloudflare (Lovable-Workflow unveraendert).
+  // Fuer den VPS-Deploy: NITRO_PRESET=node-server npm run build (siehe deploy.md).
+  nitro: process.env.NITRO_PRESET ? { preset: process.env.NITRO_PRESET } : undefined,
 });

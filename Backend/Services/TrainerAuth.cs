@@ -2,7 +2,7 @@ namespace TeamCompass.Api.Services;
 
 public static class TrainerAuth
 {
-    public static (int userId, string email)? FromRequest(HttpRequest request)
+    public static (int userId, string name)? FromRequest(HttpRequest request)
     {
         var token = TokenFromRequest(request);
         return string.IsNullOrEmpty(token) ? null : SessionStore.Validate(token);

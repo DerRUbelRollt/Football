@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayerIndexRouteImport } from './routes/player.index'
 import { Route as ApiPlayersRouteImport } from './routes/api/players'
 import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authenticated/statistics'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -31,7 +32,8 @@ import { Route as ApiPlayerAttendanceRouteImport } from './routes/api/player.att
 import { Route as ApiGroupsGroupIdRouteImport } from './routes/api/groups.$groupId'
 import { Route as ApiEventsEventIdRouteImport } from './routes/api/events.$eventId'
 import { Route as ApiAuthVerifyRouteImport } from './routes/api/auth.verify'
-import { Route as ApiAuthSignupRouteImport } from './routes/api/auth.signup'
+import { Route as ApiAuthTrainersRouteImport } from './routes/api/auth.trainers'
+import { Route as ApiAuthMeRouteImport } from './routes/api/auth.me'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth.logout'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth.login'
 import { Route as ApiAttendancesAttendanceIdRouteImport } from './routes/api/attendances.$attendanceId'
@@ -68,6 +70,11 @@ const ApiPlayersRoute = ApiPlayersRouteImport.update({
 const AuthenticatedStatisticsRoute = AuthenticatedStatisticsRouteImport.update({
   id: '/statistics',
   path: '/statistics',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedGroupsRoute = AuthenticatedGroupsRouteImport.update({
@@ -152,9 +159,14 @@ const ApiAuthVerifyRoute = ApiAuthVerifyRouteImport.update({
   path: '/api/auth/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAuthSignupRoute = ApiAuthSignupRouteImport.update({
-  id: '/api/auth/signup',
-  path: '/api/auth/signup',
+const ApiAuthTrainersRoute = ApiAuthTrainersRouteImport.update({
+  id: '/api/auth/trainers',
+  path: '/api/auth/trainers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthMeRoute = ApiAuthMeRouteImport.update({
+  id: '/api/auth/me',
+  path: '/api/auth/me',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
@@ -209,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/events': typeof AuthenticatedEventsRouteWithChildren
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/api/players': typeof ApiPlayersRouteWithChildren
   '/player/': typeof PlayerIndexRoute
@@ -217,7 +230,8 @@ export interface FileRoutesByFullPath {
   '/api/attendances/$attendanceId': typeof ApiAttendancesAttendanceIdRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
-  '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/auth/me': typeof ApiAuthMeRoute
+  '/api/auth/trainers': typeof ApiAuthTrainersRoute
   '/api/auth/verify': typeof ApiAuthVerifyRoute
   '/api/events/$eventId': typeof ApiEventsEventIdRouteWithChildren
   '/api/groups/$groupId': typeof ApiGroupsGroupIdRouteWithChildren
@@ -239,6 +253,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/api/players': typeof ApiPlayersRouteWithChildren
   '/player': typeof PlayerIndexRoute
@@ -247,7 +262,8 @@ export interface FileRoutesByTo {
   '/api/attendances/$attendanceId': typeof ApiAttendancesAttendanceIdRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
-  '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/auth/me': typeof ApiAuthMeRoute
+  '/api/auth/trainers': typeof ApiAuthTrainersRoute
   '/api/auth/verify': typeof ApiAuthVerifyRoute
   '/api/events/$eventId': typeof ApiEventsEventIdRouteWithChildren
   '/api/groups/$groupId': typeof ApiGroupsGroupIdRouteWithChildren
@@ -273,6 +289,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/events': typeof AuthenticatedEventsRouteWithChildren
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/statistics': typeof AuthenticatedStatisticsRoute
   '/api/players': typeof ApiPlayersRouteWithChildren
   '/player/': typeof PlayerIndexRoute
@@ -281,7 +298,8 @@ export interface FileRoutesById {
   '/api/attendances/$attendanceId': typeof ApiAttendancesAttendanceIdRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
-  '/api/auth/signup': typeof ApiAuthSignupRoute
+  '/api/auth/me': typeof ApiAuthMeRoute
+  '/api/auth/trainers': typeof ApiAuthTrainersRoute
   '/api/auth/verify': typeof ApiAuthVerifyRoute
   '/api/events/$eventId': typeof ApiEventsEventIdRouteWithChildren
   '/api/groups/$groupId': typeof ApiGroupsGroupIdRouteWithChildren
@@ -307,6 +325,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/events'
     | '/groups'
+    | '/settings'
     | '/statistics'
     | '/api/players'
     | '/player/'
@@ -315,7 +334,8 @@ export interface FileRouteTypes {
     | '/api/attendances/$attendanceId'
     | '/api/auth/login'
     | '/api/auth/logout'
-    | '/api/auth/signup'
+    | '/api/auth/me'
+    | '/api/auth/trainers'
     | '/api/auth/verify'
     | '/api/events/$eventId'
     | '/api/groups/$groupId'
@@ -337,6 +357,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/settings'
     | '/statistics'
     | '/api/players'
     | '/player'
@@ -345,7 +366,8 @@ export interface FileRouteTypes {
     | '/api/attendances/$attendanceId'
     | '/api/auth/login'
     | '/api/auth/logout'
-    | '/api/auth/signup'
+    | '/api/auth/me'
+    | '/api/auth/trainers'
     | '/api/auth/verify'
     | '/api/events/$eventId'
     | '/api/groups/$groupId'
@@ -370,6 +392,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/events'
     | '/_authenticated/groups'
+    | '/_authenticated/settings'
     | '/_authenticated/statistics'
     | '/api/players'
     | '/player/'
@@ -378,7 +401,8 @@ export interface FileRouteTypes {
     | '/api/attendances/$attendanceId'
     | '/api/auth/login'
     | '/api/auth/logout'
-    | '/api/auth/signup'
+    | '/api/auth/me'
+    | '/api/auth/trainers'
     | '/api/auth/verify'
     | '/api/events/$eventId'
     | '/api/groups/$groupId'
@@ -406,7 +430,8 @@ export interface RootRouteChildren {
   ApiAttendancesAttendanceIdRoute: typeof ApiAttendancesAttendanceIdRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
-  ApiAuthSignupRoute: typeof ApiAuthSignupRoute
+  ApiAuthMeRoute: typeof ApiAuthMeRoute
+  ApiAuthTrainersRoute: typeof ApiAuthTrainersRoute
   ApiAuthVerifyRoute: typeof ApiAuthVerifyRoute
   ApiEventsEventIdRoute: typeof ApiEventsEventIdRouteWithChildren
   ApiGroupsGroupIdRoute: typeof ApiGroupsGroupIdRouteWithChildren
@@ -461,6 +486,13 @@ declare module '@tanstack/react-router' {
       path: '/statistics'
       fullPath: '/statistics'
       preLoaderRoute: typeof AuthenticatedStatisticsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/groups': {
@@ -575,11 +607,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/signup': {
-      id: '/api/auth/signup'
-      path: '/api/auth/signup'
-      fullPath: '/api/auth/signup'
-      preLoaderRoute: typeof ApiAuthSignupRouteImport
+    '/api/auth/trainers': {
+      id: '/api/auth/trainers'
+      path: '/api/auth/trainers'
+      fullPath: '/api/auth/trainers'
+      preLoaderRoute: typeof ApiAuthTrainersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/me': {
+      id: '/api/auth/me'
+      path: '/api/auth/me'
+      fullPath: '/api/auth/me'
+      preLoaderRoute: typeof ApiAuthMeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/logout': {
@@ -671,6 +710,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEventsRoute: typeof AuthenticatedEventsRouteWithChildren
   AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedStatisticsRoute: typeof AuthenticatedStatisticsRoute
 }
 
@@ -678,6 +718,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEventsRoute: AuthenticatedEventsRouteWithChildren,
   AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedStatisticsRoute: AuthenticatedStatisticsRoute,
 }
 
@@ -738,7 +779,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAttendancesAttendanceIdRoute: ApiAttendancesAttendanceIdRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
-  ApiAuthSignupRoute: ApiAuthSignupRoute,
+  ApiAuthMeRoute: ApiAuthMeRoute,
+  ApiAuthTrainersRoute: ApiAuthTrainersRoute,
   ApiAuthVerifyRoute: ApiAuthVerifyRoute,
   ApiEventsEventIdRoute: ApiEventsEventIdRouteWithChildren,
   ApiGroupsGroupIdRoute: ApiGroupsGroupIdRouteWithChildren,

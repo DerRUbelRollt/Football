@@ -41,4 +41,4 @@ Produktion
   - `ConnectionStrings__Default=Host=<host>;Port=<port>;Username=<user>;Password=<pass>;Database=<db>`
   - `ASPNETCORE_URLS=http://0.0.0.0:<port>` (bzw. die Adresse, auf der der Reverse-Proxy den Prozess erwartet)
 - Fehlt `ConnectionStrings__Default` in einer Nicht-Development-Umgebung, bricht der Start mit einer klaren Fehlermeldung ab, statt still gegen die lokale Dev-Datenbank zu laufen.
-- Vor dem produktiven Rollout: `DbInitializer` nutzt aktuell `EnsureCreated()` und legt bei leerer DB automatisch einen Admin (`admin@local` / `adminpass`) an — das ist für Produktion nicht geeignet und sollte vorher durch echte EF-Migrationen ersetzt werden.
+- Vor dem produktiven Rollout: `DbInitializer` nutzt aktuell `EnsureCreated()` und legt bei leerer DB automatisch einen Trainer (`Trainer` / `12345678`) an — das ist für Produktion nicht geeignet und sollte vorher durch echte EF-Migrationen ersetzt werden.

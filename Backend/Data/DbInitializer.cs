@@ -14,9 +14,8 @@ public static class DbInitializer
             var ph = new PasswordHasher<Trainer>();
             var t = new Trainer
             {
-                Email = "admin@local",
-                DisplayName = "Admin",
-                PasswordHash = ph.HashPassword(null!, "adminpass")
+                Name = "Trainer",
+                PasswordHash = ph.HashPassword(null!, "12345678")
             };
             ctx.Trainers.Add(t);
             ctx.SaveChanges();

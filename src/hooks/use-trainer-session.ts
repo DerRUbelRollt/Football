@@ -3,7 +3,7 @@ import { api } from "@/lib/api-client";
 
 export interface TrainerSession {
   userId: number;
-  email: string | null;
+  name: string;
 }
 
 export function useTrainerSession() {

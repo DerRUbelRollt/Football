@@ -85,10 +85,8 @@ function RoleToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
 
 function TrainerForm() {
   const nav = useNavigate();
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
@@ -96,12 +94,8 @@ function TrainerForm() {
     setLoading(true);
     try {
       // Die Session kommt als HttpOnly-Cookie mit der Antwort — nichts zu speichern.
-      if (isSignup) {
-        await api.auth.signup({ email, password, displayName: displayName || undefined });
-      } else {
-        await api.auth.login({ email, password });
-      }
-      toast.success(isSignup ? "Konto erstellt. Willkommen!" : "Willkommen zurück!");
+      await api.auth.login({ name, password });
+      toast.success("Willkommen zurück!");
       nav({ to: "/dashboard" });
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : (err as Error).message;
@@ -113,33 +107,21 @@ function TrainerForm() {
 
   return (
     <motion.form
-      key={isSignup ? "signup" : "login"}
       initial={{ opacity: 0, x: 8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.2 }}
       onSubmit={onSubmit}
       className="space-y-4"
     >
-      {isSignup && (
-        <div className="space-y-2">
-          <Label htmlFor="name">Anzeigename</Label>
-          <Input
-            id="name"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Trainer Müller"
-          />
-        </div>
-      )}
       <div className="space-y-2">
-        <Label htmlFor="email">E-Mail</Label>
+        <Label htmlFor="name">Name</Label>
         <Input
-          id="email"
-          type="email"
+          id="name"
+          type="text"
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="trainer@verein.de"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Trainer"
         />
       </div>
       <div className="space-y-2">
@@ -159,15 +141,8 @@ function TrainerForm() {
         disabled={loading}
         className="w-full h-12 text-base font-semibold shadow-glow"
       >
-        {loading ? "Bitte warten…" : isSignup ? "Konto erstellen" : "Anmelden"}
+        {loading ? "Bitte warten…" : "Anmelden"}
       </Button>
-      <button
-        type="button"
-        onClick={() => setIsSignup((v) => !v)}
-        className="w-full text-xs text-muted-foreground hover:text-foreground transition"
-      >
-        {isSignup ? "Bereits registriert? Anmelden" : "Noch kein Konto? Jetzt erstellen"}
-      </button>
     </motion.form>
   );
 }
