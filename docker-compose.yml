@@ -15,7 +15,7 @@ services:
       retries: 10
 
   backend:
-    image: ${BACKEND_IMAGE:-teamcompass-backend:local}
+    image: teamcompass-backend:local
     build:
       context: ./Backend
     restart: unless-stopped
@@ -28,7 +28,7 @@ services:
         condition: service_healthy
 
   frontend:
-    image: ${FRONTEND_IMAGE:-teamcompass-frontend:local}
+    image: teamcompass-frontend:local
     build:
       context: .
       dockerfile: Dockerfile.frontend

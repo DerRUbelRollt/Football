@@ -1,33 +1,19 @@
 # TeamCompass — Docker
 
 Backend (.NET 10 API), Frontend (TanStack Start/Nitro SSR) und Postgres laufen jeweils in einem eigenen
-Container. Lokal (Windows, Docker Desktop) baust und testest du damit exakt das, was später auf dem
-Strato-Server läuft — Server-seitiges Deployment steht in [deploy.md](deploy.md).
+Container. Lokal (Windows, Docker Desktop) baust und testest du damit denselben Stack, der später auf dem
+Strato-Server läuft — Server-seitiges Deployment (inkl. Schritt-für-Schritt-Anleitung) steht in
+[deploy.md](deploy.md).
+
+Es gibt **keine** Container-Registry in diesem Setup: sowohl dein Windows-Rechner (lokales Testen) als auch
+der Strato-Server bauen die Images jeweils selbst direkt aus dem Git-Repo. Das ist der einfachste Weg, wenn
+man mit Linux/Docker noch nicht viel Erfahrung hat — ein Deploy ist einfach `git pull` + ein Befehl.
 
 ## Voraussetzungen
 
 - Docker Desktop (Windows), WSL2-Backend aktiv.
-- Für den Push in eine Registry: ein GitHub-Account mit Zugriff auf dieses Repo.
 
-## Sind Windows- und Linux-Build unterschiedlich?
-
-Nein, in diesem Setup nicht — beide Dockerfiles bauen reine Linux-Container. Docker Desktop unter Windows
-baut über sein WSL2-Backend selbst schon `linux/amd64`-Images (geprüft mit `docker info --format
-'{{.OSType}}/{{.Architecture}}'` → `linux/x86_64`), exakt dieselbe Architektur wie der Ubuntu-24.04-Server
-bei Strato. Ein auf diesem Windows-Rechner gebautes Image läuft 1:1 auf dem Server — es gibt hier **keinen**
-Grund für getrennte Build-Anleitungen.
-
-Der einzige Fall, in dem das *nicht* mehr stimmt: Build auf einem ARM-Rechner (z. B. Apple-Silicon-Mac).
-Dann explizit die Ziel-Architektur erzwingen:
-
-```bash
-docker build --platform linux/amd64 ...
-```
-
-(unten in den Befehlen bereits der Vollständigkeit halber mit `--platform linux/amd64` versehen — schadet
-auf x86_64 nicht, schützt aber, falls du später von einem anderen Rechner aus baust).
-
-## Lokal bauen & starten (ohne Registry)
+## Lokal bauen & starten
 
 Einmalig Secrets anlegen:
 
@@ -60,43 +46,8 @@ docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.lo
 Daten der lokalen Postgres-Instanz überstehen `down` (liegen im benannten Volume `postgres-data`); mit
 `down -v` auch die Volumes löschen.
 
-## Images einzeln bauen (ohne Compose)
-
-Nützlich, um ein einzelnes Image zu taggen/zu pushen, ohne den ganzen Stack neu zu starten.
-
-**Backend:**
-
-```bash
-docker build --platform linux/amd64 -t ghcr.io/derrubelrollt/teamcompass-backend:latest ./Backend
-```
-
-**Frontend:**
-
-```bash
-docker build --platform linux/amd64 -f Dockerfile.frontend -t ghcr.io/derrubelrollt/teamcompass-frontend:latest .
-```
-
-(`derrubelrollt` durch deinen tatsächlichen GitHub-Namen in Kleinschreibung ersetzen — GHCR verlangt
-lowercase Image-Namen.)
-
-## In die Registry pushen (GitHub Container Registry)
-
-Einmalig ein Personal Access Token mit Scope `write:packages` (und `read:packages` für den Server-Pull)
-erstellen: GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic).
-
-```bash
-echo '<DEIN-GHCR-TOKEN>' | docker login ghcr.io -u <dein-github-username> --password-stdin
-
-docker push ghcr.io/derrubelrollt/teamcompass-backend:latest
-docker push ghcr.io/derrubelrollt/teamcompass-frontend:latest
-```
-
-Standardmäßig sind neu gepushte GHCR-Packages **privat**. Entweder auf „public" stellen (GitHub → dein
-Profil → Packages → Package → Package settings) oder auf dem Server ebenfalls `docker login ghcr.io`
-ausführen (Token braucht dafür nur `read:packages`) — Details dazu in deploy.md, Schritt 3.
-
-Danach auf dem Server nur noch `docker compose pull && docker compose up -d` (siehe deploy.md) — dort wird
-kein `git clone` der vollen Toolchain, kein .NET-SDK und kein Node benötigt, nur Docker selbst.
+Nach Codeänderungen einfach denselben `up --build -d`-Befehl erneut ausführen — Compose baut nur die
+Images neu, deren Quellcode sich geändert hat.
 
 ## Struktur
 
@@ -109,3 +60,12 @@ kein `git clone` der vollen Toolchain, kein .NET-SDK und kein Node benötigt, nu
 | `docker-compose.prod.yml` | Overlay für den Server: fügt Caddy hinzu (TLS via Let's Encrypt, Ports 80/443) |
 | `Caddyfile` | Reverse-Proxy-Konfiguration für `docker-compose.prod.yml` |
 | `.env.docker.example` | Vorlage für Secrets/Konfiguration (`.env.docker` ist gitignored) |
+
+## Warum kein Unterschied zwischen deinem Windows-Rechner und dem Linux-Server?
+
+Beide Dockerfiles bauen reine Linux-Container, und Docker Desktop unter Windows baut über sein
+WSL2-Backend selbst schon `linux/amd64`-Images (geprüft mit `docker info --format
+'{{.OSType}}/{{.Architecture}}'` → `linux/x86_64`) — dieselbe Architektur wie der Ubuntu-24.04-Server bei
+Strato. Da jede Maschine (dein PC lokal, der Server für den echten Betrieb) ihr Image aber ohnehin selbst
+aus dem Quellcode baut statt ein fertiges Image von der anderen Maschine zu übernehmen, spielt das hier
+praktisch keine Rolle mehr.
