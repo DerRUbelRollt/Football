@@ -1,7 +1,11 @@
-# Deploy auf einem Strato V-Server
+# Deploy auf einem Strato V-Server (Docker)
 
-Ziel: Domain bleibt bei Strato, läuft aber auf einem gemieteten Strato-V-Server (Root-Zugriff)
-mit dem bestehenden Stack unverändert — kein Rewrite von Backend oder Frontend nötig.
+Ziel: Domain bleibt bei Strato, läuft aber auf einem gemieteten Strato-V-Server (Root-Zugriff).
+Gebaut wird lokal (Windows) oder in CI, auf dem Server läuft ausschließlich Docker — kein .NET-SDK,
+kein Node, kein manuelles `dotnet publish`/`npm run build` auf der Maschine, die produktiv läuft.
+
+Genaue Build-Befehle (lokal, mit den fertigen Images testen) stehen in [README.md](README.md).
+Dieses Dokument behandelt nur das Server-seitige Deployment.
 
 ## Zielarchitektur
 
@@ -9,27 +13,36 @@ mit dem bestehenden Stack unverändert — kein Rewrite von Backend oder Fronten
 Browser
    |  HTTPS (443)
    v
-Nginx (TLS-Terminierung, Let's Encrypt)
-   |  HTTP, 127.0.0.1:3000
+Caddy-Container (TLS-Terminierung, automatisches Let's Encrypt)
+   |  HTTP, docker-internes Netz
    v
-Node-Prozess (Frontend, TanStack Start/Nitro SSR)      <- systemd: teamcompass-frontend
-   |  HTTP, 127.0.0.1:5000 (nur intern, nicht oeffentlich)
+Frontend-Container (Node/Nitro SSR)       <- ghcr.io/.../teamcompass-frontend
+   |  HTTP, docker-internes Netz
    v
-.NET-Prozess (Backend, ASP.NET Core API)                <- systemd: teamcompass-backend
-   |  127.0.0.1:5432
+Backend-Container (ASP.NET Core API)      <- ghcr.io/.../teamcompass-backend
+   |  docker-internes Netz
    v
-PostgreSQL (lokal, nur localhost erreichbar)
+Postgres-Container (Volume auf dem Host)
 ```
 
-Nur Nginx ist öffentlich erreichbar (Port 80/443). Backend und PostgreSQL hören ausschließlich
-auf `127.0.0.1` und sind von außen nicht ansprechbar — die Firewall lässt ihre Ports gar nicht erst durch.
+Nur Caddy publiziert Ports auf den Host (80/443). Backend, Frontend und Postgres hängen im selben
+Docker-Netzwerk und sind untereinander per Servicename erreichbar (`backend`, `frontend`, `postgres`) —
+sie haben **keine** an den Host gebundenen Ports und sind von außen nicht ansprechbar. Das ist wichtiger
+als bei der alten systemd-Variante: Docker trägt eigene iptables-Regeln ein und kann dabei eine
+UFW-„deny"-Regel umgehen, wenn ein Port versehentlich mit `ports:` auf `0.0.0.0` publiziert wird —
+deshalb im Zweifel nie `ports:` auf Backend/Frontend/Postgres in `docker-compose.prod.yml` ergänzen.
 
 ## Voraussetzungen
 
 - Zugriff auf das Strato-Kundenpanel (zum Bestellen des Servers und für die DNS-Verwaltung der Domain).
-- Der Domain-Ordner/FTP-Zugang vom bisherigen Webhosting-Paket bleibt bestehen, wird für diese Domain aber nicht mehr genutzt, sobald die DNS umgestellt ist (Schritt 8).
+- Ein Container-Registry-Account, in den die Images gepusht werden — empfohlen: **GitHub Container
+  Registry (`ghcr.io`)**, da direkt am bestehenden GitHub-Repo hängend und kostenlos für private/öffentliche
+  Images. Setup dafür steht in README.md.
+- Der Domain-Ordner/FTP-Zugang vom bisherigen Webhosting-Paket bleibt bestehen, wird für diese Domain aber
+  nicht mehr genutzt, sobald die DNS umgestellt ist (Schritt 7).
 
-Bewusst **kein Plesk** aktivieren, obwohl es allen Strato-V-Server-Tarifen kostenlos beiliegt: Plesk frisst bei 4 GB RAM einen spürbaren Teil des Budgets. Nginx + Certbot manuell einzurichten ist bei SSH-Erfahrung genauso schnell und schlanker.
+Bewusst **kein Plesk** aktivieren: Plesk frisst bei 4 GB RAM einen spürbaren Teil des Budgets und Docker
+braucht ohnehin keine Panel-Verwaltung.
 
 ---
 
@@ -39,10 +52,12 @@ Bewusst **kein Plesk** aktivieren, obwohl es allen Strato-V-Server-Tarifen koste
 - Tarif mit **2 vCores / 4 GB RAM / 40 GB NVMe** wählen (reicht für 50 Nutzer/5-10 gleichzeitig komfortabel).
 - Als Betriebssystem **Ubuntu 24.04 LTS** auswählen.
 - Rechenzentrums-Standort **Deutschland**.
-- Falls im Bestellprozess abgefragt: eigenen SSH-Public-Key hochladen (spart den Key-Schritt weiter unten) — sonst kommt ein root-Passwort per E-Mail/Kundenpanel.
+- Falls im Bestellprozess abgefragt: eigenen SSH-Public-Key hochladen (spart den Key-Schritt weiter unten) —
+  sonst kommt ein root-Passwort per E-Mail/Kundenpanel.
 - Bestellung abschließen; IP-Adresse und Zugangsdaten kommen per E-Mail bzw. stehen im Kundenpanel.
 
-(Die genauen Klickpfade im Strato-Bestellprozess können von der aktuellen Panel-Version abweichen — die Eckdaten oben sind das, worauf es ankommt.)
+(Die genauen Klickpfade im Strato-Bestellprozess können von der aktuellen Panel-Version abweichen — die
+Eckdaten oben sind das, worauf es ankommt.)
 
 ---
 
@@ -90,7 +105,7 @@ Optional, aber empfohlen (SSH-Bruteforce-Schutz):
 sudo apt install -y fail2ban
 ```
 
-Swap-Space anlegen — bei 4 GB RAM ein günstiges Sicherheitsnetz gegen abrupte OOM-Kills bei Lastspitzen (z. B. während `npm run build`):
+Swap-Space anlegen — bei 4 GB RAM ein günstiges Sicherheitsnetz gegen abrupte OOM-Kills bei Lastspitzen:
 
 ```bash
 sudo fallocate -l 2G /swapfile
@@ -104,202 +119,94 @@ Ab hier alle Befehle als `<dein-username>` mit `sudo`, nicht mehr als root.
 
 ---
 
-## 2. Laufzeiten installieren
+## 2. Docker installieren
 
-**.NET 10 SDK** (in Ubuntu 24.04 direkt im Standard-Repo enthalten, kein extra Microsoft-Repo nötig):
-
-```bash
-sudo apt-get update
-sudo apt-get install -y dotnet-sdk-10.0
-```
-
-**Node.js 24 LTS** (über NodeSource, da Ubuntu 24.04 selbst eine ältere Node-Version mitbringt):
+Kein .NET-SDK, kein Node, kein PostgreSQL-Paket nötig — nur Docker Engine + Compose-Plugin:
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_24.x | sudo bash -
-sudo apt-get install -y nodejs
-node --version   # sollte v24.x zeigen
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker "$USER"
 ```
 
-**PostgreSQL, Nginx, Git, Certbot:**
+Danach einmal aus- und wieder einloggen, damit die Gruppenmitgliedschaft greift. Prüfen:
 
 ```bash
-sudo apt-get install -y postgresql nginx git certbot python3-certbot-nginx
+docker --version
+docker compose version
 ```
-
-PostgreSQL ist nach der Installation bereits standardmäßig nur auf `localhost` erreichbar — kein zusätzliches Härten nötig.
 
 ---
 
-## 3. PostgreSQL einrichten
+## 3. Registry-Zugang auf dem Server einrichten
+
+Damit `docker compose pull` die privat gehosteten Images ziehen kann, einmalig bei der Registry einloggen
+(Personal Access Token mit `read:packages`-Scope, siehe README.md):
 
 ```bash
-sudo -u postgres psql -c "CREATE ROLE teamcompass WITH LOGIN PASSWORD '<STARKES-PASSWORT>';"
-sudo -u postgres psql -c "CREATE DATABASE teamcompass OWNER teamcompass;"
+echo '<GHCR-TOKEN>' | docker login ghcr.io -u <dein-github-username> --password-stdin
 ```
-
-Verwende ein neues, starkes Passwort — nicht die Dev-Zugangsdaten aus `Backend/appsettings.Development.json`.
 
 ---
 
-## 4. Code auf den Server holen
+## 4. Deploy-Dateien auf den Server holen
+
+Es wird **kein vollständiger Checkout mit Node/.NET-Toolchain** benötigt — nur die Compose-/Config-Dateien.
+Einfachster Weg: das Repo klonen (die Dateien sind klein, das schadet nicht) und nur damit arbeiten:
 
 ```bash
 sudo mkdir -p /opt/teamcompass
 sudo chown "$USER" /opt/teamcompass
 git clone https://github.com/DerRUbelRollt/Football.git /opt/teamcompass/app
+cd /opt/teamcompass/app
 ```
 
 Falls das Repo privat ist, entweder einen Personal-Access-Token in der URL verwenden oder (sauberer) einen
-Deploy-Key auf dem Server erzeugen (`ssh-keygen`) und als Read-only Deploy Key in den GitHub-Repo-Einstellungen hinterlegen.
+Deploy-Key auf dem Server erzeugen (`ssh-keygen`) und als Read-only Deploy Key in den GitHub-Repo-Einstellungen
+hinterlegen.
 
 ---
 
-## 5. Backend bauen und als systemd-Service einrichten
+## 5. Secrets konfigurieren
 
 ```bash
-cd /opt/teamcompass/app
-dotnet publish Backend/TeamCompass.Api.csproj -c Release -o /opt/teamcompass/backend-publish
+cp .env.docker.example .env.docker
+nano .env.docker
 ```
 
-Env-Datei mit den Produktions-Secrets anlegen (bewusst **nicht** in `appsettings.Production.json`, die liegt im Git-Repo):
+Ausfüllen:
+
+- `POSTGRES_PASSWORD`: neues, starkes Passwort — nicht die Dev-Zugangsdaten aus `Backend/appsettings.Development.json`.
+- `BACKEND_IMAGE` / `FRONTEND_IMAGE`: die in README.md gepushten Image-Tags (z. B. `ghcr.io/derrubelrollt/teamcompass-backend:latest`).
+- `DOMAIN`: die tatsächliche Domain, z. B. `teamcompass.example.de` (Caddy holt darüber automatisch das Let's-Encrypt-Zertifikat).
+
+`.env.docker` bewusst **nicht** einchecken (steht in `.gitignore`) — Berechtigungen einschränken:
 
 ```bash
-sudo mkdir -p /etc/teamcompass
-sudo tee /etc/teamcompass/backend.env > /dev/null <<'EOF'
-ASPNETCORE_ENVIRONMENT=Production
-ASPNETCORE_URLS=http://127.0.0.1:5000
-ConnectionStrings__Default=Host=127.0.0.1;Port=5432;Username=teamcompass;Password=<STARKES-PASSWORT>;Database=teamcompass
-EOF
-sudo chmod 640 /etc/teamcompass/backend.env
-```
-
-`/etc/systemd/system/teamcompass-backend.service`:
-
-```ini
-[Unit]
-Description=TeamCompass Backend (.NET API)
-After=network.target postgresql.service
-Wants=postgresql.service
-
-[Service]
-Type=simple
-User=teamcompass
-Group=teamcompass
-WorkingDirectory=/opt/teamcompass/backend-publish
-EnvironmentFile=/etc/teamcompass/backend.env
-ExecStart=/usr/bin/dotnet /opt/teamcompass/backend-publish/TeamCompass.Api.dll
-Restart=always
-RestartSec=5
-SyslogIdentifier=teamcompass-backend
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Prüfe vorher mit `which dotnet`, ob der Pfad bei dir abweicht.
-
-Mit `ConnectionStrings:Default` gesetzt und `ASPNETCORE_ENVIRONMENT=Production` verwendet das Backend genau die Produktionsabsicherung aus `Backend/Program.cs`: Fehlt die Variable, bricht der Start sofort mit einer klaren Fehlermeldung ab, statt gegen die lokale Dev-DB zu laufen.
-
----
-
-## 6. Frontend bauen und als systemd-Service einrichten
-
-```bash
-cd /opt/teamcompass/app
-npm ci
-NITRO_PRESET=node-server npm run build
-```
-
-`NITRO_PRESET=node-server` ist nötig, weil der Zero-Config-Build sonst einen Cloudflare-Worker baut (für den Lovable-Workflow, unverändert). Das Ergebnis liegt in `.output/` und ist in sich geschlossen (eigenes `node_modules`, eigener `public/`-Ordner) — verifiziert per Testlauf ohne das Projekt-`node_modules`.
-
-Env-Datei fürs Frontend:
-
-```bash
-sudo tee /etc/teamcompass/frontend.env > /dev/null <<'EOF'
-NODE_ENV=production
-PORT=3000
-HOST=127.0.0.1
-BACKEND_URL=http://127.0.0.1:5000
-EOF
-sudo chmod 640 /etc/teamcompass/frontend.env
-```
-
-`/etc/systemd/system/teamcompass-frontend.service`:
-
-```ini
-[Unit]
-Description=TeamCompass Frontend (Node/Nitro SSR)
-After=network.target teamcompass-backend.service
-Wants=teamcompass-backend.service
-
-[Service]
-Type=simple
-User=teamcompass
-Group=teamcompass
-WorkingDirectory=/opt/teamcompass/app
-EnvironmentFile=/etc/teamcompass/frontend.env
-ExecStart=/usr/bin/node /opt/teamcompass/app/.output/server/index.mjs
-Restart=always
-RestartSec=5
-SyslogIdentifier=teamcompass-frontend
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Prüfe vorher mit `which node`, ob der Pfad bei dir abweicht.
-
-**Dedizierten Service-User anlegen und Rechte setzen, dann beide Services starten:**
-
-```bash
-sudo useradd --system --no-create-home --shell /usr/sbin/nologin teamcompass
-sudo chown -R teamcompass:teamcompass /opt/teamcompass
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now teamcompass-backend
-sudo systemctl enable --now teamcompass-frontend
-
-systemctl status teamcompass-backend teamcompass-frontend
+chmod 600 .env.docker
 ```
 
 ---
 
-## 7. Nginx als Reverse Proxy + TLS
-
-`/etc/nginx/sites-available/teamcompass`:
-
-```nginx
-server {
-    listen 80;
-    server_name <deine-domain.tld> www.<deine-domain.tld>;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
+## 6. Container starten
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/teamcompass /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml pull
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-TLS-Zertifikat holen (baut den 443-Server-Block und die Weiterleitung automatisch in die Config ein):
+`docker-compose.prod.yml` fügt den Caddy-Container hinzu, der Port 80/443 öffentlich published und automatisch
+ein Let's-Encrypt-Zertifikat für `DOMAIN` holt — kein manuelles Nginx/Certbot-Setup nötig.
+
+Status prüfen:
 
 ```bash
-sudo certbot --nginx -d <deine-domain.tld> -d www.<deine-domain.tld>
-sudo certbot renew --dry-run   # Auto-Renewal testen
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml ps
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml logs -f
 ```
 
 ---
 
-## 8. Domain-DNS bei Strato umstellen
+## 7. Domain-DNS bei Strato umstellen
 
 Im Strato-Kundenpanel: Domains → `<deine-domain.tld>` → DNS-Verwaltung.
 
@@ -307,68 +214,95 @@ Im Strato-Kundenpanel: Domains → `<deine-domain.tld>` → DNS-Verwaltung.
 - Für `www` ebenfalls einen A-Record (oder CNAME auf die Hauptdomain) anlegen.
 - DNS-Umstellung kann bis zu 24h propagieren, meist deutlich schneller.
 
-Das Webhosting-Paket selbst bleibt bestehen und nutzbar — es bekommt nur keinen Traffic mehr über diese Domain, sobald die DNS umgezogen ist.
+Das Webhosting-Paket selbst bleibt bestehen und nutzbar — es bekommt nur keinen Traffic mehr über diese
+Domain, sobald die DNS umgezogen ist.
 
 ---
 
-## 9. Verifizieren
+## 8. Verifizieren
 
 ```bash
-curl -I http://127.0.0.1:3000          # Frontend antwortet lokal
-curl -I http://127.0.0.1:5000/api      # Backend antwortet lokal (Pfad je nach Route anpassen)
-sudo journalctl -u teamcompass-backend -f    # Live-Logs Backend
-sudo journalctl -u teamcompass-frontend -f   # Live-Logs Frontend
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml ps
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml logs backend -f
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml logs frontend -f
 ```
 
-Danach im Browser: `https://<deine-domain.tld>` aufrufen, Zertifikat prüfen (Schloss-Symbol), Login-Flow testen.
+Danach im Browser: `https://<deine-domain.tld>` aufrufen, Zertifikat prüfen (Schloss-Symbol), Login-Flow
+testen.
 
-**Reboot-Test**: einmal durchstarten und prüfen, dass wirklich alles automatisch wieder hochkommt (die Services sind bereits `enable`d, sollten also von selbst starten):
+**Reboot-Test**: einmal durchstarten und prüfen, dass wirklich alles automatisch wieder hochkommt
+(`restart: unless-stopped` sorgt dafür, dass Docker die Container nach einem Reboot selbst wieder startet,
+sofern der Docker-Daemon per systemd `enable`d ist — das macht `get.docker.com` automatisch):
 
 ```bash
 sudo reboot
 # kurz warten, dann erneut per SSH einloggen
-systemctl status teamcompass-backend teamcompass-frontend nginx postgresql
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml ps
 ```
 
-**Sofort nach dem ersten Start:** Mit dem automatisch angelegten Default-Trainer einloggen (`Trainer` / `12345678`, siehe `Backend/Data/DbInitializer.cs`) und **sofort unter „Einstellungen" das Passwort ändern** (öffentliches Signup gibt es nicht mehr — neue Trainer-Accounts werden ausschließlich von bereits angemeldeten Trainern über die Einstellungsseite angelegt).
+**Sofort nach dem ersten Start:** Mit dem automatisch angelegten Default-Trainer einloggen
+(`Trainer` / `12345678`, siehe `Backend/Data/DbInitializer.cs`) und **sofort unter „Einstellungen" das
+Passwort ändern** (öffentliches Signup gibt es nicht mehr — neue Trainer-Accounts werden ausschließlich von
+bereits angemeldeten Trainern über die Einstellungsseite angelegt).
 
 ---
 
-## 10. Künftige Updates ausrollen
+## 9. Künftige Updates ausrollen
+
+Neue Images lokal bauen und pushen (siehe README.md), dann auf dem Server:
 
 ```bash
 cd /opt/teamcompass/app
-git pull
-
-dotnet publish Backend/TeamCompass.Api.csproj -c Release -o /opt/teamcompass/backend-publish
-NITRO_PRESET=node-server npm ci && NITRO_PRESET=node-server npm run build
-
-sudo chown -R teamcompass:teamcompass /opt/teamcompass
-sudo systemctl restart teamcompass-backend
-sudo systemctl restart teamcompass-frontend
+git pull   # nur relevant, falls sich Compose-/Caddy-Config geändert hat
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml pull
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-Sessions liegen in-memory (siehe `Backend/README.md`) — ein Neustart von `teamcompass-backend` loggt alle Trainer aus. Bei 50 Nutzern unkritisch, aber am besten außerhalb der Hauptnutzungszeit deployen.
+`up -d` nach einem `pull` ersetzt nur die Container, deren Image sich geändert hat, mit minimaler
+Downtime. Sessions liegen in-memory (siehe `Backend/README.md`) — ein Neustart des Backend-Containers
+loggt alle Trainer aus. Bei 50 Nutzern unkritisch, aber am besten außerhalb der Hauptnutzungszeit deployen.
+
+Alte, nicht mehr referenzierte Images aufräumen (spart Plattenplatz auf 40 GB NVMe):
+
+```bash
+docker image prune -f
+```
 
 ---
 
-## 11. Backups
+## 10. Backups
 
-Strato-V-Server-Tarife enthalten standardmäßig **keine** automatischen Backups. Minimaler eigener Schutz für die Datenbank:
+Strato-V-Server-Tarife enthalten standardmäßig **keine** automatischen Backups. Minimaler eigener Schutz
+für die Datenbank (Dump aus dem laufenden Postgres-Container):
 
 ```bash
-sudo -u postgres pg_dump teamcompass | gzip > /var/backups/teamcompass-$(date +\%F).sql.gz
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres \
+  pg_dump -U teamcompass teamcompass | gzip > /var/backups/teamcompass-$(date +\%F).sql.gz
 ```
 
-Als Cronjob (z. B. täglich um 3 Uhr) einrichten und die Dumps zusätzlich offsite kopieren (z. B. per `scp`/`rclone` auf einen anderen Rechner/Cloud-Speicher) — ein Backup, das nur auf demselben Server liegt, schützt nicht vor Server-Totalausfall.
+Als Cronjob (z. B. täglich um 3 Uhr) einrichten und die Dumps zusätzlich offsite kopieren (z. B. per
+`scp`/`rclone` auf einen anderen Rechner/Cloud-Speicher) — ein Backup, das nur auf demselben Server liegt,
+schützt nicht vor Server-Totalausfall. Das Postgres-Datenverzeichnis selbst liegt im benannten Volume
+`postgres-data` und übersteht Container-Neustarts/-Updates unverändert.
 
 ---
 
 ## Bekannte Einschränkungen (bewusst nicht in diesem Schritt behoben)
 
-- **Secure-Cookie-Flag**: `Backend/Services/SessionCookie.cs:20` setzt `Secure = request.IsHttps`. Da das Backend nur intern per HTTP von Node aus erreicht wird, ist das immer `false` — das Session-Cookie bekommt kein `Secure`-Flag, obwohl die Seite über HTTPS läuft. Funktioniert trotzdem (Login/Session funktionieren normal), ist aber kein vollständig korrektes Secure-Cookie-Setup.
-- **In-memory Sessions**: kein Redis o. Ä., jeder Backend-Neustart loggt alle Trainer aus. Für diese Nutzerzahl unkritisch.
-- **`DbInitializer.EnsureCreated()`**: legt das Schema direkt an statt über EF-Migrationen und seedet automatisch einen Default-Trainer. Für spätere Schema-Änderungen sollte das auf echte Migrationen umgestellt werden.
-- **Kein Trainer-Listing/-Löschen**: `POST /auth/trainers` legt Konten an, aber es gibt keine Möglichkeit, bestehende Trainer-Accounts einzusehen oder zu entfernen. Ein über den Default-Account angelegtes Konto bleibt daher auch nach einem späteren Passwortwechsel des Default-Trainers unsichtbar und nicht entziehbar — ein weiterer Grund, das Default-Passwort sofort nach dem ersten Login zu ändern.
-- **Kein CI/CD**: Updates laufen aktuell manuell nach Schritt 10. Ließe sich später per GitHub Actions automatisieren.
-- **Keine automatischen OS-Sicherheitsupdates**: `sudo apt install unattended-upgrades` wäre ein sinnvoller zusätzlicher Härtungsschritt.
+- **Secure-Cookie-Flag**: `Backend/Services/SessionCookie.cs:20` setzt `Secure = request.IsHttps`. Da das
+  Backend nur intern per HTTP von Caddy/Frontend aus erreicht wird, ist das immer `false` — das
+  Session-Cookie bekommt kein `Secure`-Flag, obwohl die Seite über HTTPS läuft. Funktioniert trotzdem
+  (Login/Session funktionieren normal), ist aber kein vollständig korrektes Secure-Cookie-Setup.
+- **In-memory Sessions**: kein Redis o. Ä., jeder Backend-Neustart loggt alle Trainer aus. Für diese
+  Nutzerzahl unkritisch.
+- **`DbInitializer.EnsureCreated()`**: legt das Schema direkt an statt über EF-Migrationen und seedet
+  automatisch einen Default-Trainer. Für spätere Schema-Änderungen sollte das auf echte Migrationen
+  umgestellt werden.
+- **Kein Trainer-Listing/-Löschen**: `POST /auth/trainers` legt Konten an, aber es gibt keine Möglichkeit,
+  bestehende Trainer-Accounts einzusehen oder zu entfernen. Ein über den Default-Account angelegtes Konto
+  bleibt daher auch nach einem späteren Passwortwechsel des Default-Trainers unsichtbar und nicht
+  entziehbar — ein weiterer Grund, das Default-Passwort sofort nach dem ersten Login zu ändern.
+- **Kein CI/CD**: Images werden aktuell manuell gebaut und gepusht (siehe README.md). Ließe sich später per
+  GitHub Actions automatisieren (Build+Push bei jedem Push auf `main`).
+- **Keine automatischen OS-Sicherheitsupdates**: `sudo apt install unattended-upgrades` wäre ein sinnvoller
+  zusätzlicher Härtungsschritt für den Host selbst (unabhängig von Docker).

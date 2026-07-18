@@ -1,0 +1,15 @@
+node_modules
+.git
+.output
+.wrangler
+.tanstack
+.vinxi
+.nitro
+.vscode
+Backend
+npgsql-test
+*.log
+.env
+.env.*
+dist
+dist-ssr

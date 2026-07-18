@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-teamcompass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss in .env gesetzt sein}
+      POSTGRES_DB: ${POSTGRES_DB:-teamcompass}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-teamcompass}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ${BACKEND_IMAGE:-teamcompass-backend:local}
+    build:
+      context: ./Backend
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://0.0.0.0:5000
+      ConnectionStrings__Default: Host=postgres;Port=5432;Username=${POSTGRES_USER:-teamcompass};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss in .env gesetzt sein};Database=${POSTGRES_DB:-teamcompass}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-teamcompass-frontend:local}
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      BACKEND_URL: http://backend:5000
+    depends_on:
+      - backend
+
+volumes:
+  postgres-data:

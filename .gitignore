@@ -20,6 +20,9 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Docker-Compose Secrets (siehe .env.docker.example)
+.env.docker
+
 # .NET build output
 Backend/bin/
 Backend/obj/
