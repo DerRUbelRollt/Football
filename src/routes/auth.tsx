@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Trophy, User, ShieldCheck, KeyRound } from "lucide-react";
+import { LegalFooter } from "@/components/legal-footer";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -24,7 +25,7 @@ type Mode = "trainer" | "player";
 function AuthPage() {
   const [mode, setMode] = useState<Mode>("trainer");
   return (
-    <div className="min-h-screen bg-pitch flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-pitch flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -54,6 +55,9 @@ function AuthPage() {
           Deine Daten sind sicher verschlüsselt gespeichert.
         </p>
       </motion.div>
+      <div className="absolute bottom-0 inset-x-0">
+        <LegalFooter />
+      </div>
     </div>
   );
 }

@@ -11,12 +11,12 @@ Dieses Dokument ist die Schritt-für-Schritt-Anleitung für den Server.
 
 ## Zielarchitektur
 
+Solange keine Domain vorhanden ist (aktueller Stand, Schritt 5A), ist das Frontend direkt per HTTP über
+die VPS-IP erreichbar — noch kein Caddy, noch kein TLS:
+
 ```
 Browser
-   |  HTTPS (443)
-   v
-Caddy-Container (TLS-Terminierung, automatisches Let's Encrypt)
-   |  HTTP, docker-internes Netz
+   |  HTTP (80), ueber die VPS-IP
    v
 Frontend-Container (Node/Nitro SSR)       <- aus Backend/Dockerfile bzw. Dockerfile.frontend gebaut
    |  HTTP, docker-internes Netz
@@ -27,17 +27,36 @@ Backend-Container (ASP.NET Core API)
 Postgres-Container (Volume auf dem Host)
 ```
 
-Nur Caddy publiziert Ports auf den Host (80/443). Backend, Frontend und Postgres hängen im selben
-Docker-Netzwerk und sind untereinander per Servicename erreichbar (`backend`, `frontend`, `postgres`) —
-sie haben **keine** an den Host gebundenen Ports und sind von außen nicht ansprechbar. Wichtig: nie
-`ports:` für Backend/Frontend/Postgres ergänzen — Docker trägt eigene iptables-Regeln ein und kann dabei
-eine UFW-„deny"-Regel umgehen, wenn ein Port versehentlich mit `ports:` auf `0.0.0.0` publiziert wird.
+Sobald eine Domain da ist (Schritt 5B), kommt Caddy als TLS-Terminierung davor:
+
+```
+Browser
+   |  HTTPS (443)
+   v
+Caddy-Container (TLS-Terminierung, automatisches Let's Encrypt)
+   |  HTTP, docker-internes Netz
+   v
+Frontend-Container (Node/Nitro SSR)
+   |  HTTP, docker-internes Netz
+   v
+Backend-Container (ASP.NET Core API)
+   |  docker-internes Netz
+   v
+Postgres-Container (Volume auf dem Host)
+```
+
+In beiden Fällen gilt: Backend und Postgres hängen nur im docker-internen Netzwerk und sind untereinander
+per Servicename erreichbar (`backend`, `frontend`, `postgres`) — sie haben **keine** an den Host gebundenen
+Ports und sind von außen nicht ansprechbar. Nur der öffentlich erreichbare Container (Frontend im
+No-Domain-Setup, Caddy sobald eine Domain da ist) published einen Port. Wichtig: nie zusätzlich `ports:`
+für Backend/Postgres ergänzen — Docker trägt eigene iptables-Regeln ein und kann dabei eine
+UFW-„deny"-Regel umgehen, wenn ein Port versehentlich mit `ports:` auf `0.0.0.0` publiziert wird.
 
 ## Voraussetzungen
 
 - Zugriff auf das Strato-Kundenpanel (zum Bestellen des Servers und für die DNS-Verwaltung der Domain).
 - Der Domain-Ordner/FTP-Zugang vom bisherigen Webhosting-Paket bleibt bestehen, wird für diese Domain aber
-  nicht mehr genutzt, sobald die DNS umgestellt ist (Schritt 7).
+  nicht mehr genutzt, sobald die DNS umgestellt ist (Schritt 5B).
 
 Bewusst **kein Plesk** aktivieren, auch wenn es als optionale Lizenz kostenlos dazu buchbar wäre: Docker
 braucht ohnehin keine Panel-Verwaltung, und bei kleineren Tarifen (4 GB RAM) frisst Plesk zusätzlich einen
@@ -72,39 +91,65 @@ nur ein Notzugriff auf die Konsole.
 
 Ebenfalls inklusive: eine optionale Firewall auf Strato-Seite (zusätzlich zur `ufw`-Firewall, die wir
 gleich auf dem Server selbst einrichten) und ein SSL-Zertifikat — Letzteres brauchen wir hier nicht, da
-Caddy in Schritt 5 automatisch ein eigenes Let's-Encrypt-Zertifikat holt. **Backups sind bei allen
-Linux-V-Server-Tarifen nicht inklusive** (siehe Schritt 9).
+Caddy in Schritt 5B automatisch ein eigenes Let's-Encrypt-Zertifikat holt. **Backups sind bei allen
+Linux-V-Server-Tarifen nicht inklusive** (siehe Schritt 8).
 
 ---
 
 ## 1. Server-Grundabsicherung
 
-Als `root` einloggen:
+Als `root` einloggen — du hast deinen Public Key schon bei der (Neu-)Installation der VM bei Strato
+hochgeladen, Passwort-Login für `root` ist daher bereits deaktiviert. Deshalb explizit mit `-i` auf den
+privaten Schlüssel verweisen (liegt nicht im SSH-Standardpfad):
 
 ```bash
-ssh root@<VPS-IP>
+ssh -i F:/Strato/SSH/id_ed25519 root@31.70.92.211
 apt update && apt upgrade -y
 ```
 
-Eigenen sudo-User anlegen (nicht dauerhaft als root arbeiten):
+Eigenen sudo-User anlegen (nicht dauerhaft als root arbeiten). Bei `adduser` nach einem Unix-Passwort für
+`max` gefragt — das ist nur für spätere `sudo`-Abfragen auf dem Server, hat nichts mit SSH-Login zu tun:
 
 ```bash
-adduser <dein-username>
-usermod -aG sudo <dein-username>
+adduser max
+usermod -aG sudo max
 ```
 
-SSH-Key-Login einrichten (falls noch nicht beim Bestellen hinterlegt) und danach Passwort-Login abschalten:
+SSH-Key-Login für `max` einrichten: Weil `root` bereits per Key eingeloggt ist, kopierst du seinen
+`authorized_keys`-Eintrag einfach direkt auf dem Server zu `max` weiter (kein `ssh-copy-id` von deinem
+Windows-Rechner nötig — würde ohnehin an derselben Passwort-Sperre scheitern, die gerade `root` schützt):
 
 ```bash
-# Lokal auf deinem Rechner, falls noch kein Key existiert:
-ssh-keygen -t ed25519 -C "Football"
-ssh-copy-id <dein-username>@<VPS-IP>
+# Noch als root, auf dem Server:
+mkdir -p /home/max/.ssh
+cp /root/.ssh/authorized_keys /home/max/.ssh/authorized_keys
+chown -R max:max /home/max/.ssh
+chmod 700 /home/max/.ssh
+chmod 600 /home/max/.ssh/authorized_keys
+```
 
-# Auf dem Server, in /etc/ssh/sshd_config:
-#   PasswordAuthentication no
-#   PermitRootLogin no
+Danach in einem **zweiten** Terminal-Fenster (die aktuelle root-Sitzung offen lassen, falls etwas
+schiefgeht) testen, ob der Login als `max` per Key klappt:
+
+```bash
+ssh strato-vm
+```
+
+(Nutzt automatisch `max` + deinen Key, siehe `C:\Users\maxru\.ssh\config`.) Klappt das, in der root-Sitzung
+noch `root`-Login komplett sperren und sicherstellen, dass Passwort-Login wirklich aus ist (`sudo nano
+/etc/ssh/sshd_config`, folgende zwei Zeilen prüfen/ergänzen):
+
+```
+PasswordAuthentication no
+PermitRootLogin no
+```
+
+```bash
 sudo systemctl restart ssh
 ```
+
+Ab jetzt kannst du dich nur noch als `max` einloggen, mit `ssh strato-vm` statt der langen Form mit IP
+und `-i`.
 
 Firewall — **erst SSH erlauben, dann aktivieren**, sonst sperrst du dich aus:
 
@@ -132,7 +177,7 @@ sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
-Ab hier alle Befehle als `<dein-username>` mit `sudo`, nicht mehr als root.
+Ab hier alle Befehle als `max` mit `sudo`, nicht mehr als root.
 
 ---
 
@@ -164,9 +209,7 @@ git clone https://github.com/DerRUbelRollt/Football.git /opt/teamcompass/app
 cd /opt/teamcompass/app
 ```
 
-Falls das Repo privat ist, entweder einen Personal-Access-Token in der URL verwenden oder (sauberer) einen
-Deploy-Key auf dem Server erzeugen (`ssh-keygen`) und als Read-only Deploy Key in den GitHub-Repo-Einstellungen
-hinterlegen.
+Das Repo ist öffentlich, daher reicht das normale `git clone` ohne Token/Deploy-Key.
 
 ---
 
@@ -180,8 +223,8 @@ nano .env.docker
 Ausfüllen (in `nano`: Pfeiltasten zum Navigieren, danach `Strg+O` zum Speichern, `Strg+X` zum Beenden):
 
 - `POSTGRES_PASSWORD`: neues, starkes Passwort — nicht die Dev-Zugangsdaten aus `Backend/appsettings.Development.json`.
-- `DOMAIN`: die tatsächliche Domain, z. B. `teamcompass.example.de` (Caddy holt darüber automatisch das
-  Let's-Encrypt-Zertifikat).
+- `DOMAIN`: **kannst du vorerst so lassen/leer lassen, du hast noch keine Domain.** Wird erst gebraucht,
+  sobald du auf Schritt 5B wechselst (siehe unten).
 
 `.env.docker` bewusst **nicht** einchecken (steht in `.gitignore`) — Berechtigungen einschränken:
 
@@ -193,49 +236,75 @@ chmod 600 .env.docker
 
 ## 5. Container bauen und starten
 
+Du hast noch keine eigene Domain — deshalb starten wir vorerst **ohne** Caddy/TLS, erreichbar direkt über
+die VPS-IP per HTTP. Sobald du später eine Domain hast, wechselst du mit ein paar Befehlen auf HTTPS
+(Schritt 5B) — der Rest (Backend, Frontend, Datenbank) bleibt dabei unverändert.
+
+### 5A. Jetzt: ohne Domain, per IP (HTTP)
+
 ```bash
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.ip.yml up --build -d
 ```
 
 Das baut Backend- und Frontend-Image direkt aus dem geklonten Repo (dauert beim ersten Mal ein paar
-Minuten) und startet danach den kompletten Stack inkl. Caddy. `docker-compose.prod.yml` fügt den
-Caddy-Container hinzu, der Port 80/443 öffentlich published und automatisch ein Let's-Encrypt-Zertifikat
-für `DOMAIN` holt — kein manuelles Nginx/Certbot-Setup nötig.
+Minuten) und startet danach Postgres, Backend und Frontend. `docker-compose.ip.yml` published nur den
+Frontend-Container direkt auf Port 80 der VM — kein Caddy, kein Zertifikat, dafür sofort erreichbar unter:
+
+```
+http://31.70.92.211
+```
 
 Status prüfen:
 
 ```bash
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml ps
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml logs -f
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.ip.yml ps
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.ip.yml logs -f
 ```
 
 (Mit `Strg+C` verlässt du die Log-Ansicht wieder, die Container laufen weiter.)
 
----
+### 5B. Später: sobald du eine Domain hast (HTTPS via Caddy)
 
-## 6. Domain-DNS bei Strato umstellen
+Das passiert **nicht automatisch**, nur weil die Domain registriert ist — du musst diese zwei Teile
+einmalig selbst nacheinander ausführen, in genau dieser Reihenfolge:
 
-Im Strato-Kundenpanel: Domains → `<deine-domain.tld>` → DNS-Verwaltung.
+**Erst DNS umstellen.** Im Strato-Kundenpanel: Domains → `svhrh.team` → DNS-Verwaltung.
 
-- Bestehenden **A-Record** (zeigt aktuell auf das Webhosting-Paket) auf die neue VPS-IP ändern.
-- Für `www` ebenfalls einen A-Record (oder CNAME auf die Hauptdomain) anlegen.
-- DNS-Umstellung kann bis zu 24h propagieren, meist deutlich schneller.
+- **A-Record** anlegen bzw. ändern: zeigt auf `31.70.92.211`.
+- Für `www` ebenfalls einen A-Record (oder CNAME auf die Hauptdomain) anlegen (`www.svhrh.team`).
+- DNS-Umstellung kann bis zu 24h propagieren, meist deutlich schneller. Mit
+  `nslookup svhrh.team` (auch von deinem Windows-Rechner aus) prüfen, ob schon `31.70.92.211`
+  zurückkommt — erst wenn das der Fall ist, macht der nächste Teil Sinn.
 
-Das Webhosting-Paket selbst bleibt bestehen und nutzbar — es bekommt nur keinen Traffic mehr über diese
-Domain, sobald die DNS umgezogen ist.
-
----
-
-## 7. Verifizieren
+**Dann erst auf dem Server umschalten.** Sobald `nslookup svhrh.team` die richtige IP liefert:
 
 ```bash
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml ps
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml logs backend -f
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml logs frontend -f
+cd /opt/teamcompass/app
+nano .env.docker   # DOMAIN=svhrh.team eintragen
+
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.ip.yml down
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 ```
 
-Danach im Browser: `https://<deine-domain.tld>` aufrufen, Zertifikat prüfen (Schloss-Symbol), Login-Flow
-testen.
+`docker-compose.prod.yml` ersetzt die `.ip.yml`-Variante: es fügt den Caddy-Container hinzu, der Port
+80/443 öffentlich published und automatisch ein Let's-Encrypt-Zertifikat für `DOMAIN` holt — kein
+manuelles Nginx/Certbot-Setup nötig. Ab dann läuft die Seite unter `https://svhrh.team`. Ab diesem Zeitpunkt
+in allen weiteren Befehlen (Updates, Backups, Verifizieren) `docker-compose.prod.yml` statt
+`docker-compose.ip.yml` verwenden.
+
+---
+
+## 6. Verifizieren
+
+```bash
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.ip.yml ps
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.ip.yml logs backend -f
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.ip.yml logs frontend -f
+```
+
+Danach im Browser: `http://31.70.92.211` aufrufen, Login-Flow testen. (Sobald du auf Schritt 5B mit Domain
+umgestiegen bist, hier `docker-compose.prod.yml` statt `docker-compose.ip.yml` verwenden und `https://svhrh.team`
+aufrufen, inkl. Zertifikat-Check am Schloss-Symbol.)
 
 **Reboot-Test**: einmal durchstarten und prüfen, dass wirklich alles automatisch wieder hochkommt
 (`restart: unless-stopped` sorgt dafür, dass Docker die Container nach einem Reboot selbst wieder startet,
@@ -243,9 +312,9 @@ sofern der Docker-Daemon per systemd `enable`d ist — das macht `get.docker.com
 
 ```bash
 sudo reboot
-# kurz warten, dann erneut per SSH einloggen
+# kurz warten, dann erneut per SSH einloggen (ssh strato-vm)
 cd /opt/teamcompass/app
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml ps
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.ip.yml ps
 ```
 
 **Sofort nach dem ersten Start:** Mit dem automatisch angelegten Default-Trainer einloggen
@@ -255,20 +324,23 @@ bereits angemeldeten Trainern über die Einstellungsseite angelegt).
 
 ---
 
-## 8. Künftige Updates ausrollen
+## 7. Künftige Updates ausrollen
 
 ```bash
 cd /opt/teamcompass/app
 git pull
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.ip.yml up --build -d
 ```
+
+(Läuft der Server schon mit Domain/Caddy — Schritt 5B —, dann hier `docker-compose.prod.yml` statt
+`docker-compose.ip.yml` verwenden, wie in allen Befehlen ab diesem Zeitpunkt.)
 
 `up --build -d` baut nur die Images neu, deren Quellcode sich seit dem letzten Build geändert hat, und
 ersetzt danach nur die betroffenen Container — mit minimaler Downtime. Sessions liegen in-memory (siehe
 `Backend/README.md`) — ein Neustart des Backend-Containers loggt alle Trainer aus. Bei 50 Nutzern
 unkritisch, aber am besten außerhalb der Hauptnutzungszeit deployen.
 
-Alte, nicht mehr referenzierte Images aufräumen (spart Plattenplatz auf 40 GB NVMe):
+Alte, nicht mehr referenzierte Images aufräumen (spart Plattenplatz, bei VPS L auf 240 GB NVMe unkritisch):
 
 ```bash
 docker image prune -f
@@ -276,15 +348,17 @@ docker image prune -f
 
 ---
 
-## 9. Backups
+## 8. Backups
 
 Strato-V-Server-Tarife enthalten standardmäßig **keine** automatischen Backups. Minimaler eigener Schutz
 für die Datenbank (Dump aus dem laufenden Postgres-Container):
 
 ```bash
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres \
+docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.ip.yml exec -T postgres \
   pg_dump -U teamcompass teamcompass | gzip > /var/backups/teamcompass-$(date +\%F).sql.gz
 ```
+
+(Auch hier: sobald mit Domain/Caddy betrieben, `docker-compose.prod.yml` statt `docker-compose.ip.yml`.)
 
 Als Cronjob (z. B. täglich um 3 Uhr) einrichten und die Dumps zusätzlich offsite kopieren (z. B. per
 `scp`/`rclone` auf einen anderen Rechner/Cloud-Speicher) — ein Backup, das nur auf demselben Server liegt,
@@ -295,6 +369,10 @@ schützt nicht vor Server-Totalausfall. Das Postgres-Datenverzeichnis selbst lie
 
 ## Bekannte Einschränkungen (bewusst nicht in diesem Schritt behoben)
 
+- **Noch kein TLS (Schritt 5A, solange keine Domain vorhanden ist)**: Die Seite läuft aktuell nur über
+  `http://31.70.92.211` — Login-Passwort und Session-Cookie reisen dabei unverschlüsselt über das
+  öffentliche Internet. Für einen kurzen Testzeitraum vertretbar, aber sobald echte Trainer/Spielerdaten
+  eingegeben werden, sollte zügig eine Domain besorgt und auf Schritt 5B (Caddy/HTTPS) umgestiegen werden.
 - **Secure-Cookie-Flag**: `Backend/Services/SessionCookie.cs:20` setzt `Secure = request.IsHttps`. Da das
   Backend nur intern per HTTP von Caddy/Frontend aus erreicht wird, ist das immer `false` — das
   Session-Cookie bekommt kein `Secure`-Flag, obwohl die Seite über HTTPS läuft. Funktioniert trotzdem
@@ -308,7 +386,7 @@ schützt nicht vor Server-Totalausfall. Das Postgres-Datenverzeichnis selbst lie
   bestehende Trainer-Accounts einzusehen oder zu entfernen. Ein über den Default-Account angelegtes Konto
   bleibt daher auch nach einem späteren Passwortwechsel des Default-Trainers unsichtbar und nicht
   entziehbar — ein weiterer Grund, das Default-Passwort sofort nach dem ersten Login zu ändern.
-- **Kein CI/CD**: Updates laufen aktuell manuell nach Schritt 8 (`git pull` + `up --build -d` direkt auf dem
+- **Kein CI/CD**: Updates laufen aktuell manuell nach Schritt 7 (`git pull` + `up --build -d` direkt auf dem
   Server). Ließe sich später per GitHub Actions automatisieren.
 - **Keine automatischen OS-Sicherheitsupdates**: `sudo apt install unattended-upgrades` wäre ein sinnvoller
   zusätzlicher Härtungsschritt für den Host selbst (unabhängig von Docker).

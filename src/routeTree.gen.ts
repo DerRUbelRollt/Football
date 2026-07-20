@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ImpressumRouteImport } from './routes/impressum'
+import { Route as DatenschutzRouteImport } from './routes/datenschutz'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -43,6 +45,16 @@ import { Route as ApiGroupsGroupIdPlayersRouteImport } from './routes/api/groups
 import { Route as ApiEventsEventIdAttendancesRouteImport } from './routes/api/events.$eventId.attendances'
 import { Route as ApiPlayersPlayerIdGroupsGroupIdRouteImport } from './routes/api/players.$playerId.groups.$groupId'
 
+const ImpressumRoute = ImpressumRouteImport.update({
+  id: '/impressum',
+  path: '/impressum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DatenschutzRoute = DatenschutzRouteImport.update({
+  id: '/datenschutz',
+  path: '/datenschutz',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -218,6 +230,8 @@ const ApiPlayersPlayerIdGroupsGroupIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/datenschutz': typeof DatenschutzRoute
+  '/impressum': typeof ImpressumRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/events': typeof AuthenticatedEventsRouteWithChildren
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
@@ -252,6 +266,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/datenschutz': typeof DatenschutzRoute
+  '/impressum': typeof ImpressumRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
@@ -286,6 +302,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/datenschutz': typeof DatenschutzRoute
+  '/impressum': typeof ImpressumRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/events': typeof AuthenticatedEventsRouteWithChildren
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
@@ -322,6 +340,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/datenschutz'
+    | '/impressum'
     | '/dashboard'
     | '/events'
     | '/groups'
@@ -356,6 +376,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/datenschutz'
+    | '/impressum'
     | '/dashboard'
     | '/settings'
     | '/statistics'
@@ -389,6 +411,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/datenschutz'
+    | '/impressum'
     | '/_authenticated/dashboard'
     | '/_authenticated/events'
     | '/_authenticated/groups'
@@ -425,6 +449,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  DatenschutzRoute: typeof DatenschutzRoute
+  ImpressumRoute: typeof ImpressumRoute
   ApiPlayersRoute: typeof ApiPlayersRouteWithChildren
   PlayerIndexRoute: typeof PlayerIndexRoute
   ApiAttendancesAttendanceIdRoute: typeof ApiAttendancesAttendanceIdRoute
@@ -446,6 +472,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/impressum': {
+      id: '/impressum'
+      path: '/impressum'
+      fullPath: '/impressum'
+      preLoaderRoute: typeof ImpressumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/datenschutz': {
+      id: '/datenschutz'
+      path: '/datenschutz'
+      fullPath: '/datenschutz'
+      preLoaderRoute: typeof DatenschutzRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -774,6 +814,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  DatenschutzRoute: DatenschutzRoute,
+  ImpressumRoute: ImpressumRoute,
   ApiPlayersRoute: ApiPlayersRouteWithChildren,
   PlayerIndexRoute: PlayerIndexRoute,
   ApiAttendancesAttendanceIdRoute: ApiAttendancesAttendanceIdRoute,

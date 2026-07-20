@@ -14,6 +14,7 @@ import { useState, type ReactNode } from "react";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LegalFooter } from "@/components/legal-footer";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -117,6 +118,7 @@ export function TrainerShell({ children }: { children: ReactNode }) {
         )}
       </header>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">{children}</main>
+      <LegalFooter />
     </div>
   );
 }
