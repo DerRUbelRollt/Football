@@ -7,7 +7,8 @@ Git-Repo; du musst dafür keine Linux-Kommandozeilen-Erfahrung mitbringen, jeder
 Copy-Pasten da.
 
 Genaue Erklärung der einzelnen Dateien (Dockerfiles, Compose-Overlays) steht in [README.md](README.md).
-Dieses Dokument ist die Schritt-für-Schritt-Anleitung für den Server.
+Dieses Dokument ist die Schritt-für-Schritt-Anleitung für den Server. Für spätere Updates (Frontend,
+Backend, Datenbank) siehe [update.md](update.md).
 
 ## Zielarchitektur
 

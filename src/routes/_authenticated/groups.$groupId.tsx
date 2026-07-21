@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api-client";
+import { api, type PlayerRow } from "@/lib/api-client";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,16 @@ export const Route = createFileRoute("/_authenticated/groups/$groupId")({
   ),
   notFoundComponent: () => <div className="p-6">Mannschaft nicht gefunden.</div>,
 });
+
+async function copyAllPlayers(players: PlayerRow[]) {
+  const text = players.map((p) => `${p.first_name} ${p.last_name}: ${p.player_code}`).join("\n");
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success("Alle Spieler in die Zwischenablage kopiert");
+  } catch {
+    toast.error("Kopieren nicht möglich");
+  }
+}
 
 function GroupDetail() {
   const { groupId } = Route.useParams();
@@ -86,9 +96,19 @@ function GroupDetail() {
       <div className="card-elevated p-5 sm:p-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 font-semibold"><Users className="h-4 w-4 text-primary" /> Spieler ({playersQ.data?.length ?? 0})</div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Spieler suchen…" className="pl-9" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!playersQ.data?.length}
+              onClick={() => copyAllPlayers(playersQ.data ?? [])}
+            >
+              <Copy className="h-3.5 w-3.5 mr-1.5" /> Alle kopieren
+            </Button>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Spieler suchen…" className="pl-9" />
+            </div>
           </div>
         </div>
 
