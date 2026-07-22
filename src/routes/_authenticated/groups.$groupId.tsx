@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type PlayerRow } from "@/lib/api-client";
+import { api, ApiError, type PlayerRow, type DuplicatePlayerRow } from "@/lib/api-client";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -229,47 +229,80 @@ function AddPlayerDialog({ groupId, onCreated }: { groupId: string; onCreated: (
   const [open, setOpen] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [duplicates, setDuplicates] = useState<DuplicatePlayerRow[] | null>(null);
+
+  const reset = () => {
+    setFirstName(""); setLastName(""); setDuplicates(null);
+  };
 
   const m = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (force: boolean) => {
       // Die eindeutige Spieler-ID wird im Backend generiert.
       const player = await api.groups.addPlayer(groupId, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        force,
       });
       return player.player_code;
     },
     onSuccess: (code) => {
       toast.success(`Spieler angelegt · ID: ${code}`);
-      setFirstName(""); setLastName(""); setOpen(false);
+      reset(); setOpen(false);
       onCreated();
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: (e) => {
+      if (e instanceof ApiError && e.status === 409 && e.details && typeof e.details === "object" && "duplicates" in e.details) {
+        setDuplicates((e.details as { duplicates: DuplicatePlayerRow[] }).duplicates);
+        return;
+      }
+      toast.error((e as Error).message);
+    },
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) reset(); }}>
       <DialogTrigger asChild>
         <Button className="shadow-glow"><Plus className="h-4 w-4 mr-1" /> Spieler</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>Neuer Spieler</DialogTitle></DialogHeader>
-        <form onSubmit={(e) => { e.preventDefault(); m.mutate(); }} className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Vorname</Label>
-              <Input required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Nachname</Label>
-              <Input required value={lastName} onChange={(e) => setLastName(e.target.value)} />
-            </div>
+        {duplicates ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Es {duplicates.length === 1 ? "existiert bereits ein Spieler" : "existieren bereits Spieler"} mit dem Nachnamen „{lastName.trim()}“:
+            </p>
+            <ul className="divide-y divide-border rounded-md border">
+              {duplicates.map((p) => (
+                <li key={p.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <span className="font-medium">{p.first_name} {p.last_name}</span>
+                  <span className="text-xs text-muted-foreground font-mono">{p.player_code}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-muted-foreground">Oft werden für den Vornamen Spitznamen genutzt – prüfe, ob es sich um denselben Spieler handelt.</p>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setDuplicates(null)}>Zurück</Button>
+              <Button variant="destructive" disabled={m.isPending} onClick={() => m.mutate(true)}>Trotzdem anlegen</Button>
+            </DialogFooter>
           </div>
-          <p className="text-xs text-muted-foreground">Die Spieler-ID wird automatisch generiert.</p>
-          <DialogFooter>
-            <Button type="submit" disabled={m.isPending}>Anlegen</Button>
-          </DialogFooter>
-        </form>
+        ) : (
+          <form onSubmit={(e) => { e.preventDefault(); m.mutate(false); }} className="space-y-4">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Vorname</Label>
+                <Input required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Nachname</Label>
+                <Input required value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">Die Spieler-ID wird automatisch generiert.</p>
+            <DialogFooter>
+              <Button type="submit" disabled={m.isPending}>Anlegen</Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

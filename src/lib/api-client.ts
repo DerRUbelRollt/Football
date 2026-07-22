@@ -118,6 +118,13 @@ export interface ExistingPlayerRow {
   player_code: string;
 }
 
+export interface DuplicatePlayerRow {
+  id: number;
+  first_name: string;
+  last_name: string;
+  player_code: string;
+}
+
 export interface EventListItem {
   id: number;
   event_type: "training" | "game";
@@ -199,7 +206,7 @@ export const api = {
     remove: (groupId: string | number) =>
       apiFetch<{ ok: true }>(`/api/groups/${groupId}`, { method: "DELETE" }),
     players: (groupId: string | number) => apiFetch<PlayerRow[]>(`/api/groups/${groupId}/players`),
-    addPlayer: (groupId: string | number, body: { firstName: string; lastName: string }) =>
+    addPlayer: (groupId: string | number, body: { firstName: string; lastName: string; force?: boolean }) =>
       apiFetch<PlayerRow>(`/api/groups/${groupId}/players`, { method: "POST", body }),
   },
   players: {

@@ -86,6 +86,18 @@ public class GroupsController : ControllerBase
         var group = await _ctx.Groups.FirstOrDefaultAsync(g => g.Id == id);
         if (group == null) return NotFound(new { error = "Mannschaft nicht gefunden" });
 
+        // Nur der Nachname wird verglichen, da für Vornamen oft Spitznamen verwendet werden.
+        var lastName = req.LastName.Trim();
+        if (!req.Force)
+        {
+            var duplicates = await _ctx.Players
+                .Where(p => p.LastName.ToLower() == lastName.ToLower())
+                .Select(p => new { id = p.Id, first_name = p.FirstName, last_name = p.LastName, player_code = p.PlayerCode })
+                .ToListAsync();
+            if (duplicates.Count > 0)
+                return Conflict(new { error = "Ein Spieler mit diesem Nachnamen existiert bereits", duplicates });
+        }
+
         string? code = null;
         for (var i = 0; i < 5; i++)
         {
@@ -119,4 +131,4 @@ public class GroupsController : ControllerBase
 }
 
 public record CreateGroupRequest(string Name, string? Description);
-public record CreatePlayerRequest(string FirstName, string LastName);
+public record CreatePlayerRequest(string FirstName, string LastName, bool Force = false);
