@@ -118,6 +118,9 @@ function PlayerHome() {
             <div className="space-y-3">
               {upcoming.map((e: any, i: number) => {
                 const status = e.attendances[0]?.status ?? "pending";
+                const deadline = new Date(e.event_at);
+                deadline.setHours(16, 0, 0, 0);
+                const isDeadlinePassed = e.event_type === "training" && Date.now() >= deadline.getTime();
                 return (
                   <motion.div
                     key={e.id}
@@ -145,15 +148,17 @@ function PlayerHome() {
                     <div className="grid grid-cols-2 gap-2 mt-4">
                       <Button
                         onClick={() => m.mutate({ eventId: e.id, status: "accepted" })}
-                        disabled={m.isPending}
+                        disabled={m.isPending || isDeadlinePassed}
                         className={status === "accepted" ? "bg-primary text-primary-foreground shadow-glow" : "bg-secondary text-foreground hover:bg-primary/20"}
+                          title={isDeadlinePassed ? "Antwortfrist (Deadline) überschritten" : undefined}
                       >
                         <Check className="h-4 w-4 mr-1" /> Ich nehme teil
                       </Button>
                       <Button
                         onClick={() => m.mutate({ eventId: e.id, status: "declined" })}
-                        disabled={m.isPending}
+                        disabled={m.isPending || isDeadlinePassed}
                         variant={status === "declined" ? "destructive" : "outline"}
+                          title={isDeadlinePassed ? "Antwortfrist (Deadline) überschritten" : undefined}
                       >
                         <X className="h-4 w-4 mr-1" /> Absagen
                       </Button>

@@ -50,6 +50,16 @@ public class PlayerController : ControllerBase
         var ev = await _ctx.Events.FirstOrDefaultAsync(e => e.Id == req.EventId);
         if (ev == null) return NotFound(new { error = "Ereignis nicht gefunden" });
 
+        // Enforce deadline for training events: players may only respond until 16:00 on the event day.
+        if (ev.EventType == "training")
+        {
+            var deadlineUtc = new DateTime(ev.EventAt.Year, ev.EventAt.Month, ev.EventAt.Day, 16, 0, 0, DateTimeKind.Utc);
+            if (DateTime.UtcNow >= deadlineUtc)
+            {
+                return BadRequest(new { error = "Deadline erreicht" });
+            }
+        }
+
         var att = await _ctx.Attendances.FirstOrDefaultAsync(a => a.EventId == req.EventId && a.PlayerId == player.Id);
         if (att == null)
         {
