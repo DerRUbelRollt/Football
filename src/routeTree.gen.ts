@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayerIndexRouteImport } from './routes/player.index'
+import { Route as PlayerStrafenManagerRouteImport } from './routes/player.strafen-manager'
 import { Route as ApiPlayersRouteImport } from './routes/api/players'
 import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authenticated/statistics'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -28,6 +29,8 @@ import { Route as AuthenticatedEventsIndexRouteImport } from './routes/_authenti
 import { Route as ApiStatsDashboardRouteImport } from './routes/api/stats.dashboard'
 import { Route as ApiStatsAttendanceRouteImport } from './routes/api/stats.attendance'
 import { Route as ApiPlayersPlayerIdRouteImport } from './routes/api/players.$playerId'
+import { Route as ApiPlayerPenaltyRouteImport } from './routes/api/player.penalty'
+import { Route as ApiPlayerPenaltiesRouteImport } from './routes/api/player.penalties'
 import { Route as ApiPlayerOverviewRouteImport } from './routes/api/player.overview'
 import { Route as ApiPlayerLoginRouteImport } from './routes/api/player.login'
 import { Route as ApiPlayerAttendanceRouteImport } from './routes/api/player.attendance'
@@ -72,6 +75,11 @@ const IndexRoute = IndexRouteImport.update({
 const PlayerIndexRoute = PlayerIndexRouteImport.update({
   id: '/player/',
   path: '/player/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlayerStrafenManagerRoute = PlayerStrafenManagerRouteImport.update({
+  id: '/player/strafen-manager',
+  path: '/player/strafen-manager',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPlayersRoute = ApiPlayersRouteImport.update({
@@ -140,6 +148,16 @@ const ApiPlayersPlayerIdRoute = ApiPlayersPlayerIdRouteImport.update({
   id: '/$playerId',
   path: '/$playerId',
   getParentRoute: () => ApiPlayersRoute,
+} as any)
+const ApiPlayerPenaltyRoute = ApiPlayerPenaltyRouteImport.update({
+  id: '/api/player/penalty',
+  path: '/api/player/penalty',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayerPenaltiesRoute = ApiPlayerPenaltiesRouteImport.update({
+  id: '/api/player/penalties',
+  path: '/api/player/penalties',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPlayerOverviewRoute = ApiPlayerOverviewRouteImport.update({
   id: '/api/player/overview',
@@ -238,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/api/players': typeof ApiPlayersRouteWithChildren
+  '/player/strafen-manager': typeof PlayerStrafenManagerRoute
   '/player/': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
@@ -252,6 +271,8 @@ export interface FileRoutesByFullPath {
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
+  '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
+  '/api/player/penalty': typeof ApiPlayerPenaltyRoute
   '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
@@ -272,6 +293,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/api/players': typeof ApiPlayersRouteWithChildren
+  '/player/strafen-manager': typeof PlayerStrafenManagerRoute
   '/player': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
@@ -286,6 +308,8 @@ export interface FileRoutesByTo {
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
+  '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
+  '/api/player/penalty': typeof ApiPlayerPenaltyRoute
   '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
@@ -310,6 +334,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/statistics': typeof AuthenticatedStatisticsRoute
   '/api/players': typeof ApiPlayersRouteWithChildren
+  '/player/strafen-manager': typeof PlayerStrafenManagerRoute
   '/player/': typeof PlayerIndexRoute
   '/_authenticated/events/$eventId': typeof AuthenticatedEventsEventIdRoute
   '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
@@ -324,6 +349,8 @@ export interface FileRoutesById {
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
+  '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
+  '/api/player/penalty': typeof ApiPlayerPenaltyRoute
   '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
@@ -348,6 +375,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/statistics'
     | '/api/players'
+    | '/player/strafen-manager'
     | '/player/'
     | '/events/$eventId'
     | '/groups/$groupId'
@@ -362,6 +390,8 @@ export interface FileRouteTypes {
     | '/api/player/attendance'
     | '/api/player/login'
     | '/api/player/overview'
+    | '/api/player/penalties'
+    | '/api/player/penalty'
     | '/api/players/$playerId'
     | '/api/stats/attendance'
     | '/api/stats/dashboard'
@@ -382,6 +412,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/statistics'
     | '/api/players'
+    | '/player/strafen-manager'
     | '/player'
     | '/events/$eventId'
     | '/groups/$groupId'
@@ -396,6 +427,8 @@ export interface FileRouteTypes {
     | '/api/player/attendance'
     | '/api/player/login'
     | '/api/player/overview'
+    | '/api/player/penalties'
+    | '/api/player/penalty'
     | '/api/players/$playerId'
     | '/api/stats/attendance'
     | '/api/stats/dashboard'
@@ -419,6 +452,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/statistics'
     | '/api/players'
+    | '/player/strafen-manager'
     | '/player/'
     | '/_authenticated/events/$eventId'
     | '/_authenticated/groups/$groupId'
@@ -433,6 +467,8 @@ export interface FileRouteTypes {
     | '/api/player/attendance'
     | '/api/player/login'
     | '/api/player/overview'
+    | '/api/player/penalties'
+    | '/api/player/penalty'
     | '/api/players/$playerId'
     | '/api/stats/attendance'
     | '/api/stats/dashboard'
@@ -452,6 +488,7 @@ export interface RootRouteChildren {
   DatenschutzRoute: typeof DatenschutzRoute
   ImpressumRoute: typeof ImpressumRoute
   ApiPlayersRoute: typeof ApiPlayersRouteWithChildren
+  PlayerStrafenManagerRoute: typeof PlayerStrafenManagerRoute
   PlayerIndexRoute: typeof PlayerIndexRoute
   ApiAttendancesAttendanceIdRoute: typeof ApiAttendancesAttendanceIdRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
@@ -464,6 +501,8 @@ export interface RootRouteChildren {
   ApiPlayerAttendanceRoute: typeof ApiPlayerAttendanceRoute
   ApiPlayerLoginRoute: typeof ApiPlayerLoginRoute
   ApiPlayerOverviewRoute: typeof ApiPlayerOverviewRoute
+  ApiPlayerPenaltiesRoute: typeof ApiPlayerPenaltiesRoute
+  ApiPlayerPenaltyRoute: typeof ApiPlayerPenaltyRoute
   ApiStatsAttendanceRoute: typeof ApiStatsAttendanceRoute
   ApiStatsDashboardRoute: typeof ApiStatsDashboardRoute
   ApiEventsIndexRoute: typeof ApiEventsIndexRoute
@@ -512,6 +551,13 @@ declare module '@tanstack/react-router' {
       path: '/player'
       fullPath: '/player/'
       preLoaderRoute: typeof PlayerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/player/strafen-manager': {
+      id: '/player/strafen-manager'
+      path: '/player/strafen-manager'
+      fullPath: '/player/strafen-manager'
+      preLoaderRoute: typeof PlayerStrafenManagerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/players': {
@@ -604,6 +650,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/players/$playerId'
       preLoaderRoute: typeof ApiPlayersPlayerIdRouteImport
       parentRoute: typeof ApiPlayersRoute
+    }
+    '/api/player/penalty': {
+      id: '/api/player/penalty'
+      path: '/api/player/penalty'
+      fullPath: '/api/player/penalty'
+      preLoaderRoute: typeof ApiPlayerPenaltyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player/penalties': {
+      id: '/api/player/penalties'
+      path: '/api/player/penalties'
+      fullPath: '/api/player/penalties'
+      preLoaderRoute: typeof ApiPlayerPenaltiesRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/player/overview': {
       id: '/api/player/overview'
@@ -817,6 +877,7 @@ const rootRouteChildren: RootRouteChildren = {
   DatenschutzRoute: DatenschutzRoute,
   ImpressumRoute: ImpressumRoute,
   ApiPlayersRoute: ApiPlayersRouteWithChildren,
+  PlayerStrafenManagerRoute: PlayerStrafenManagerRoute,
   PlayerIndexRoute: PlayerIndexRoute,
   ApiAttendancesAttendanceIdRoute: ApiAttendancesAttendanceIdRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
@@ -829,6 +890,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPlayerAttendanceRoute: ApiPlayerAttendanceRoute,
   ApiPlayerLoginRoute: ApiPlayerLoginRoute,
   ApiPlayerOverviewRoute: ApiPlayerOverviewRoute,
+  ApiPlayerPenaltiesRoute: ApiPlayerPenaltiesRoute,
+  ApiPlayerPenaltyRoute: ApiPlayerPenaltyRoute,
   ApiStatsAttendanceRoute: ApiStatsAttendanceRoute,
   ApiStatsDashboardRoute: ApiStatsDashboardRoute,
   ApiEventsIndexRoute: ApiEventsIndexRoute,

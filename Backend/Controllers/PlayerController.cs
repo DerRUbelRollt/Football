@@ -18,7 +18,16 @@ public class PlayerController : ControllerBase
         var player = await _ctx.Players.Include(p => p.GroupMemberships).ThenInclude(m => m.Group).FirstOrDefaultAsync(p => p.PlayerCode == req.Code.ToUpper());
         if (player == null) return NotFound(new { error = "Ungültige Spieler-ID" });
         var firstMembership = player.GroupMemberships.OrderBy(m => m.GroupId).FirstOrDefault();
-        return Ok(new { player = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = firstMembership?.GroupId ?? 0, groups = player.GroupMemberships.Select(m => new { name = m.Group!.Name }).ToList() } });
+        return Ok(new
+        { player = new {
+            id = player.Id,
+            first_name = player.FirstName,
+            last_name = player.LastName,
+            player_code = player.PlayerCode,
+            group_id = firstMembership?.GroupId ?? 0,
+            player_penalty = player.PlayerPenalty,
+            penalty_manager = player.PenaltyManager,
+            groups = player.GroupMemberships.Select(m => new { name = m.Group!.Name }).ToList() } });
     }
 
     [HttpPost("overview")]
@@ -36,7 +45,7 @@ public class PlayerController : ControllerBase
         var histList = history.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, event_at = e.EventAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
 
         var firstMembership = player.GroupMemberships.OrderBy(m => m.GroupId).FirstOrDefault();
-        var p = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = firstMembership?.GroupId ?? 0, groups = player.GroupMemberships.Select(m => new { name = m.Group!.Name }).ToList() };
+        var p = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = firstMembership?.GroupId ?? 0, player_penalty = player.PlayerPenalty, penalty_manager = player.PenaltyManager, groups = player.GroupMemberships.Select(m => new { name = m.Group!.Name }).ToList() };
 
         return Ok(new { player = p, upcoming = upList, history = histList });
     }
@@ -75,7 +84,50 @@ public class PlayerController : ControllerBase
         await _ctx.SaveChangesAsync();
         return Ok(new { ok = true });
     }
+
+    [HttpPatch("penalty")]
+    public async Task<IActionResult> UpdatePenalty([FromBody] PlayerPenaltyRequest req)
+    {
+        var manager = await _ctx.Players.FirstOrDefaultAsync(p => p.PlayerCode == req.ManagerCode.ToUpper());
+        if (manager == null || !manager.PenaltyManager)
+            return Unauthorized(new { error = "Nicht berechtigt" });
+
+        var player = await _ctx.Players
+            .FirstOrDefaultAsync(p => p.PlayerCode == req.Code.ToUpper());
+
+        if (player == null)
+            return NotFound(new { error = "Ungültige Spieler-ID" });
+
+        player.PlayerPenalty = Math.Max(0, player.PlayerPenalty + req.Amount);
+
+        await _ctx.SaveChangesAsync();
+
+        return Ok(new
+        {
+            ok = true,
+            player_id = player.Id,
+            player_penalty = player.PlayerPenalty
+        });
+    }
+
+    [HttpPost("penalties")]
+    public async Task<IActionResult> ListPenalties([FromBody] ManagerCodeRequest req)
+    {
+        var manager = await _ctx.Players.FirstOrDefaultAsync(p => p.PlayerCode == req.ManagerCode.ToUpper());
+        if (manager == null || !manager.PenaltyManager)
+            return Unauthorized(new { error = "Nicht berechtigt" });
+
+        var players = await _ctx.Players
+            .OrderByDescending(p => p.PlayerPenalty)
+            .ThenBy(p => p.LastName).ThenBy(p => p.FirstName)
+            .Select(p => new { id = p.Id, first_name = p.FirstName, last_name = p.LastName, player_code = p.PlayerCode, player_penalty = p.PlayerPenalty })
+            .ToListAsync();
+
+        return Ok(players);
+    }
 }
 
+public record PlayerPenaltyRequest(string ManagerCode, string Code, decimal Amount);
+public record ManagerCodeRequest(string ManagerCode);
 public record CodeRequest(string Code);
 public record AttendanceRequest(string Code, int EventId, string Status);

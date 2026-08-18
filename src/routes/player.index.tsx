@@ -5,7 +5,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { getPlayerCode, clearPlayerCode } from "@/lib/player-session";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Trophy, Activity, MapPin, Clock, Check, X, LogOut, Calendar } from "lucide-react";
+import { Trophy, Activity, MapPin, Clock, Check, X, LogOut, Calendar, Wallet } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { toast } from "sonner";
@@ -87,9 +87,17 @@ function PlayerHome() {
               <div className="font-bold text-sm">{player.first_name} {player.last_name}</div>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={signOut} className="ml-auto">
-            <LogOut className="h-4 w-4 mr-1" /> Abmelden
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            {player.penalty_manager && (
+              <Button variant="outline" size="sm" onClick={() => nav({ to: "/player/strafen-manager" })}>
+                <Wallet className="h-4 w-4 mr-1" /> Strafenmanager
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={signOut}>
+              <LogOut className={`h-4 w-4 ${player.penalty_manager ? "sm:mr-1" : "mr-1"}`} />
+              <span className={player.penalty_manager ? "hidden sm:inline" : ""}>Abmelden</span>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -104,7 +112,12 @@ function PlayerHome() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <MiniStat label="Nächstes Training" value={nextTraining ? format(new Date(nextTraining.event_at), "d. MMM", { locale: de }) : "–"} icon={Activity} />
           <MiniStat label="Nächstes Spiel" value={nextGame ? format(new Date(nextGame.event_at), "d. MMM", { locale: de }) : "–"} icon={Trophy} />
-          <MiniStat label="Zusagen" value={accepted} icon={Check} />
+          <MiniStat
+            label="Schulden"
+            value={q.data?.player.player_penalty ? `${q.data?.player.player_penalty} €` : "–"}
+            icon={(q.data?.player.player_penalty ?? 0) > 0 ? Wallet : Check}
+            danger={(q.data?.player.player_penalty ?? 0) > 0}
+          />
           <MiniStat label="Quote" value={`${rate}%`} icon={Calendar} />
         </div>
 
@@ -194,12 +207,28 @@ function PlayerHome() {
   );
 }
 
-function MiniStat({ label, value, icon: Icon }: { label: string; value: any; icon: any }) {
+function MiniStat({
+  label,
+  value,
+  icon: Icon,
+  danger = false,
+}: {
+  label: string;
+  value: any;
+  icon: any;
+  danger?: boolean;
+}) {
   return (
-    <div className="card-elevated p-4">
+    <div
+      className={`card-elevated p-4 rounded transition-shadow transition-colors ${
+        danger ? "border-2 border-red-500" : "border border-transparent"
+      }`}
+    >
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</span>
-        <Icon className="h-4 w-4 text-primary" />
+        <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+          {label}
+        </span>
+        <Icon className={`h-4 w-4 ${danger ? "text-destructive" : "text-primary"}`} />
       </div>
       <div className="mt-2 text-xl font-black">{value}</div>
     </div>
