@@ -11,6 +11,11 @@ Voraussetzung: Backend/Data/Migrations/ existiert bereits (siehe Plan, Teil A).
 #>
 
 $ErrorActionPreference = "Stop"
+# Default-Konsolenencoding ist US-ASCII - ohne das hier wuerden Umlaute in einer
+# generierten Migration (z.B. deutsche Spalten-/Tabellenkommentare) beim Anzeigen/Weiterreichen
+# der SQL im Skript zu "?" korrumpiert, inkl. auf dem Produktions-Weg.
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
 $RepoRoot   = Split-Path -Parent $PSScriptRoot
 $BackendDir = Join-Path $RepoRoot "Backend"
@@ -22,14 +27,35 @@ function Read-EnvDockerValue {
     if (-not (Test-Path $envFile)) {
         throw "$envFile nicht gefunden. Datei aus .env.docker.example anlegen und Werte eintragen."
     }
-    $line = Get-Content $envFile | Where-Object { $_ -match "^$Key=" } | Select-Object -First 1
+    $pattern = "^" + [regex]::Escape($Key) + "="
+    $line = Get-Content $envFile | Where-Object { $_ -match $pattern } | Select-Object -First 1
     if (-not $line) { throw "$Key nicht in .env.docker gefunden." }
-    return ($line -split "=", 2)[1].Trim()
+    $value = ($line -split "=", 2)[1]
+    # Inline-Kommentare (" # ...") abschneiden, wie docker compose es beim Einlesen tut,
+    # und umschliessende Anfuehrungszeichen entfernen - sonst landet z.B. ein Kommentar
+    # oder ein Anfuehrungszeichen als Teil des Passworts im Connection String.
+    $value = $value -replace '\s+#.*$', ''
+    $value = $value.Trim()
+    $value = $value.Trim('"').Trim("'")
+    return $value
 }
 
 function Confirm-Step {
     param([string]$Message)
     return (Read-Host "$Message (ja/nein)").Trim().ToLower() -eq "ja"
+}
+
+function Format-ConnStringValue {
+    # Npgsql-Connection-String-Werte mit ';' oder eingebetteten Anfuehrungszeichen muessen
+    # in einfache Anfuehrungszeichen gefasst werden, sonst zerreisst ein Zeichen wie ';'
+    # im Passwort den Connection String an der falschen Stelle.
+    param([string]$Value)
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function New-LocalConnectionString {
+    param([string]$User, [string]$Pass, [string]$Db)
+    return "Host=127.0.0.1;Port=5433;Username=$(Format-ConnStringValue $User);Password=$(Format-ConnStringValue $Pass);Database=$(Format-ConnStringValue $Db)"
 }
 
 function Get-MigrationBaselineInfo {
@@ -51,6 +77,9 @@ function Get-MigrationBaselineInfo {
 
     $snapshot = Join-Path $BackendDir "Data/Migrations/AppDbContextModelSnapshot.cs"
     $match = Select-String -Path $snapshot -Pattern 'ProductVersion",\s*"([^"]+)"'
+    if (-not $match -or $match.Matches.Count -eq 0) {
+        throw "Konnte ProductVersion nicht aus $snapshot ermitteln."
+    }
     $productVersion = $match.Matches[0].Groups[1].Value
 
     return [PSCustomObject]@{ Id = $migrationId; Version = $productVersion }
@@ -59,14 +88,18 @@ function Get-MigrationBaselineInfo {
 function Invoke-LocalBaseline {
     param([string]$Container, [string]$User, [string]$Db)
 
-    $hasHistory = (docker exec -i $Container psql -U $User -d $Db -tAc `
-        "SELECT to_regclass('public.\`"__EFMigrationsHistory\`"') IS NOT NULL;").Trim()
+    $hasHistoryRaw = docker exec -i $Container psql -U $User -d $Db -tAc `
+        "SELECT to_regclass('public.\`"__EFMigrationsHistory\`"') IS NOT NULL;"
+    if ($LASTEXITCODE -ne 0) { throw "Konnte DB-Status nicht pruefen (docker exec/psql fehlgeschlagen)." }
+    $hasHistory = ($hasHistoryRaw | Out-String).Trim()
     if ($hasHistory -eq "t") {
         return
     }
 
-    $hasTables = (docker exec -i $Container psql -U $User -d $Db -tAc `
-        "SELECT to_regclass('public.\`"Trainers\`"') IS NOT NULL;").Trim()
+    $hasTablesRaw = docker exec -i $Container psql -U $User -d $Db -tAc `
+        "SELECT to_regclass('public.\`"Trainers\`"') IS NOT NULL;"
+    if ($LASTEXITCODE -ne 0) { throw "Konnte DB-Status nicht pruefen (docker exec/psql fehlgeschlagen)." }
+    $hasTables = ($hasTablesRaw | Out-String).Trim()
     if ($hasTables -ne "t") {
         # Leere DB - kein Baseline nötig, Migrationen werden gleich normal angewendet.
         return
@@ -99,7 +132,8 @@ INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
 VALUES ('$($info.Id)', '$($info.Version)')
 ON CONFLICT ("MigrationId") DO NOTHING;
 "@
-    $sql | docker exec -i $Container psql -U $User -d $Db
+    $sql | docker exec -i $Container psql -v ON_ERROR_STOP=1 -U $User -d $Db
+    if ($LASTEXITCODE -ne 0) { throw "Baseline-SQL ist fehlgeschlagen - __EFMigrationsHistory wurde NICHT geschrieben." }
     Write-Host "Baseline gesetzt: $($info.Id)" -ForegroundColor Green
 }
 
@@ -115,55 +149,80 @@ function Invoke-LocalUpdate {
     $pgUser = Read-EnvDockerValue "POSTGRES_USER"
     $pgPass = Read-EnvDockerValue "POSTGRES_PASSWORD"
     $pgDb   = Read-EnvDockerValue "POSTGRES_DB"
-    $default = "Host=127.0.0.1;Port=5433;Username=$pgUser;Password=$pgPass;Database=$pgDb"
+    $conn   = New-LocalConnectionString -User $pgUser -Pass $pgPass -Db $pgDb
 
-    $connInput = Read-Host "Connection String [$default]"
-    $conn = if ([string]::IsNullOrWhiteSpace($connInput)) { $default } else { $connInput }
+    # Bewusst kein frei eingebbarer Connection String: die Baseline-Pruefung laeuft ueber
+    # "docker exec" gegen $container/$pgDb, "dotnet ef" gegen $conn - ein frei getippter,
+    # abweichender Connection String wuerde beide Ziele auseinanderlaufen lassen.
+    Write-Host "Ziel-Datenbank: $pgDb auf $container (Host=127.0.0.1;Port=5433;Username=$pgUser)"
+    if (-not (Confirm-Step "Passt das (Container + .env.docker-Zugangsdaten)?")) {
+        throw "Abgebrochen. Falls das nicht passt: .env.docker korrigieren oder den richtigen Postgres-Container starten, dann erneut versuchen."
+    }
     $env:ConnectionStrings__Default = $conn
 
-    Invoke-LocalBaseline -Container $container -User $pgUser -Db $pgDb
-
-    Push-Location $BackendDir
     try {
-        Write-Host ""
-        Write-Host "Pruefe auf Modell-Aenderungen ohne Migration..."
-        dotnet ef migrations has-pending-model-changes --project $Csproj
-        $hasPendingChanges = ($LASTEXITCODE -ne 0)
+        Invoke-LocalBaseline -Container $container -User $pgUser -Db $pgDb
 
-        if ($hasPendingChanges) {
-            $name = Read-Host "Neue Modell-Aenderung erkannt. Name fuer die Migration (z.B. AddPlayerNotes)"
-            if ([string]::IsNullOrWhiteSpace($name)) { throw "Migrationsname darf nicht leer sein." }
-            dotnet ef migrations add $name --project $Csproj --output-dir Data/Migrations
-            if ($LASTEXITCODE -ne 0) { throw "dotnet ef migrations add ist fehlgeschlagen." }
+        Push-Location $BackendDir
+        try {
+            Write-Host ""
+            Write-Host "Pruefe auf Modell-Aenderungen ohne Migration..."
+            $pendingOutput = dotnet ef migrations has-pending-model-changes --project $Csproj 2>&1
+            $pendingOutput | Write-Host
+            $pendingText = ($pendingOutput | Out-String)
+
+            # Reihenfolge wichtig: "No changes have been made..." enthaelt als Teilstring
+            # auch "changes have been made...", und -match ist standardmaessig case-insensitiv -
+            # die spezifischere "No changes"-Meldung muss deshalb zuerst geprueft werden, sonst
+            # gewinnt faelschlich immer der "Aenderung erkannt"-Zweig.
+            if ($pendingText -match "No changes have been made to the model") {
+                $hasPendingChanges = $false
+            }
+            elseif ($pendingText -match "Changes have been made to the model") {
+                $hasPendingChanges = $true
+            }
+            else {
+                throw "dotnet ef migrations has-pending-model-changes lieferte eine unerwartete Ausgabe (Build-/EF-Fehler?) - siehe Ausgabe oben. Abbruch statt Raten."
+            }
+
+            if ($hasPendingChanges) {
+                $name = Read-Host "Neue Modell-Aenderung erkannt. Name fuer die Migration (z.B. AddPlayerNotes)"
+                if ([string]::IsNullOrWhiteSpace($name)) { throw "Migrationsname darf nicht leer sein." }
+                dotnet ef migrations add $name --project $Csproj --output-dir Data/Migrations
+                if ($LASTEXITCODE -ne 0) { throw "dotnet ef migrations add ist fehlgeschlagen." }
+            }
+            else {
+                Write-Host "Keine Modell-Aenderung seit der letzten Migration."
+            }
+
+            $scriptPath = Join-Path $env:TEMP "pending-migration-$(Get-Date -Format 'yyyyMMddHHmmss').sql"
+            dotnet ef migrations script --idempotent --project $Csproj -o $scriptPath
+            if ($LASTEXITCODE -ne 0) { throw "dotnet ef migrations script ist fehlgeschlagen." }
+
+            Write-Host ""
+            Write-Host "--- Geplante SQL-Aenderungen ($scriptPath) ---" -ForegroundColor Yellow
+            Get-Content $scriptPath | Write-Host
+            Write-Host "--- Ende SQL ---" -ForegroundColor Yellow
+            Write-Host ""
+
+            if (-not (Confirm-Step "Diese Aenderungen jetzt auf die lokale DB anwenden?")) {
+                Write-Host "Abgebrochen. Keine Aenderung vorgenommen." -ForegroundColor Yellow
+                return
+            }
+
+            dotnet ef database update --project $Csproj
+            if ($LASTEXITCODE -ne 0) { throw "dotnet ef database update ist fehlgeschlagen." }
+
+            Write-Host ""
+            Write-Host "Fertig. Aktueller Migrationsstand:" -ForegroundColor Green
+            dotnet ef migrations list --project $Csproj
         }
-        else {
-            Write-Host "Keine Modell-Aenderung seit der letzten Migration."
+        finally {
+            Pop-Location
         }
-
-        $scriptPath = Join-Path $env:TEMP "pending-migration-$(Get-Date -Format 'yyyyMMddHHmmss').sql"
-        dotnet ef migrations script --idempotent --project $Csproj -o $scriptPath
-        if ($LASTEXITCODE -ne 0) { throw "dotnet ef migrations script ist fehlgeschlagen." }
-
-        Write-Host ""
-        Write-Host "--- Geplante SQL-Aenderungen ($scriptPath) ---" -ForegroundColor Yellow
-        Get-Content $scriptPath | Write-Host
-        Write-Host "--- Ende SQL ---" -ForegroundColor Yellow
-        Write-Host ""
-
-        if (-not (Confirm-Step "Diese Aenderungen jetzt auf die lokale DB anwenden?")) {
-            Write-Host "Abgebrochen. Keine Aenderung vorgenommen." -ForegroundColor Yellow
-            return
-        }
-
-        dotnet ef database update --project $Csproj
-        if ($LASTEXITCODE -ne 0) { throw "dotnet ef database update ist fehlgeschlagen." }
-
-        Write-Host ""
-        Write-Host "Fertig. Aktueller Migrationsstand:" -ForegroundColor Green
-        dotnet ef migrations list --project $Csproj
     }
     finally {
-        Pop-Location
+        Remove-Item Env:\ConnectionStrings__Default -ErrorAction SilentlyContinue
     }
 }
 
@@ -179,67 +238,80 @@ function Invoke-ProdUpdate {
     }
 
     # Fuer 'migrations script' wird keine echte DB-Verbindung benoetigt (die Produktions-DB
-    # ist ohnehin nicht von aussen erreichbar) - die Design-Time-Factory verlangt aber
-    # trotzdem eine gesetzte Variable. Ein beliebiger gueltiger Connection-String reicht.
-    $pgUser = Read-EnvDockerValue "POSTGRES_USER"
-    $pgPass = Read-EnvDockerValue "POSTGRES_PASSWORD"
-    $pgDb   = Read-EnvDockerValue "POSTGRES_DB"
-    $env:ConnectionStrings__Default = "Host=127.0.0.1;Port=5433;Username=$pgUser;Password=$pgPass;Database=$pgDb"
+    # ist ohnehin nicht von aussen erreichbar, und der Befehl verbindet sich dafuer auch
+    # nicht) - die Design-Time-Factory verlangt aber trotzdem eine gesetzte Variable.
+    # Bewusst ein erfundener Platzhalter statt echter Zugangsdaten, die hier nicht gebraucht
+    # werden und nichts in der Prozessumgebung/im Speicher verloren haben.
+    $env:ConnectionStrings__Default = "Host=127.0.0.1;Port=1;Username=platzhalter;Password=platzhalter;Database=platzhalter"
 
     $scriptPath = Join-Path $env:TEMP "prod-migration-$(Get-Date -Format 'yyyyMMddHHmmss').sql"
-    Push-Location $BackendDir
     try {
-        dotnet ef migrations script --idempotent --project $Csproj -o $scriptPath
-        if ($LASTEXITCODE -ne 0) { throw "dotnet ef migrations script ist fehlgeschlagen." }
+        Push-Location $BackendDir
+        try {
+            dotnet ef migrations script --idempotent --project $Csproj -o $scriptPath
+            if ($LASTEXITCODE -ne 0) { throw "dotnet ef migrations script ist fehlgeschlagen." }
+        }
+        finally {
+            Pop-Location
+        }
+
+        Write-Host ""
+        Write-Host "--- Geplante SQL-Aenderungen fuer PRODUKTIV ---" -ForegroundColor Yellow
+        Get-Content $scriptPath | Write-Host
+        Write-Host "--- Ende SQL ---" -ForegroundColor Yellow
+        Write-Host ""
+
+        if (-not (Confirm-Step "Diese Aenderungen jetzt auf die PRODUKTIONS-Datenbank anwenden?")) {
+            Write-Host "Abgebrochen." -ForegroundColor Yellow
+            return
+        }
+
+        $sshHost   = "strato-vm"
+        $remoteDir = "/opt/teamcompass/app"
+        $compose   = "docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml"
+
+        # Backup zuerst, noch vor "git pull" - haengt inhaltlich nicht vom Code-Stand ab,
+        # und so ist bei jedem Abbruch vor diesem Punkt garantiert nichts an DB oder Server
+        # veraendert.
+        # /var/backups/ gehoert root, "max" hat dort ohne Passwort-Sudo keine Schreibrechte
+        # (live getestet) - deshalb ~/backups/ auf dem Server, analog zum manuellen Vorgehen.
+        Write-Host ""
+        $backupName = "teamcompass-pre-update-$(Get-Date -Format 'yyyy-MM-dd-HHmmss').sql.gz"
+        Write-Host "Backup wird erstellt: ~/backups/$backupName"
+        ssh $sshHost "set -o pipefail; mkdir -p ~/backups && cd $remoteDir && $compose exec -T postgres pg_dump -U teamcompass teamcompass | gzip > ~/backups/$backupName"
+        if ($LASTEXITCODE -ne 0) { throw "Backup auf dem Server ist fehlgeschlagen (pg_dump/gzip). Es wurde noch NICHTS an Code oder DB veraendert." }
+
+        ssh $sshHost "test -s ~/backups/$backupName && gzip -t ~/backups/$backupName"
+        if ($LASTEXITCODE -ne 0) { throw "Backup-Datei ~/backups/$backupName ist leer oder beschaedigt - Abbruch vor jeder DB-Aenderung. Es wurde noch NICHTS an Code oder DB veraendert. Manuell pruefen: ssh $sshHost 'ls -la ~/backups/'" }
+        Write-Host "Backup geprueft (vorhanden, nicht leer, gueltiges gzip)." -ForegroundColor Green
+
+        Write-Host "git pull auf dem Server..."
+        ssh $sshHost "cd $remoteDir && git pull"
+        if ($LASTEXITCODE -ne 0) { throw "git pull auf dem Server ist fehlgeschlagen. Backup liegt bereits unter ~/backups/$backupName, DB wurde noch NICHT veraendert." }
+
+        Write-Host "Baue neues Backend-Image (noch ohne Start)..."
+        ssh $sshHost "cd $remoteDir && $compose build backend"
+        if ($LASTEXITCODE -ne 0) { throw "Backend-Image-Build auf dem Server ist fehlgeschlagen. Backup liegt unter ~/backups/$backupName, DB wurde noch NICHT veraendert." }
+
+        Write-Host "Wende SQL-Aenderungen auf die Produktions-DB an..."
+        Get-Content $scriptPath -Raw | ssh $sshHost "cd $remoteDir && $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U teamcompass -d teamcompass"
+        if ($LASTEXITCODE -ne 0) { throw "Anwenden der SQL-Aenderungen ist fehlgeschlagen (psql-Fehler, per ON_ERROR_STOP abgebrochen). Jede bereits erfolgreich abgeschlossene Migration bleibt angewendet (eigene Transaktion pro Migration), die fehlgeschlagene wurde zurueckgerollt. Backup liegt unter ~/backups/$backupName. Alten Backend-Container NICHT neu starten, bevor die Ursache geklaert ist." }
+
+        Write-Host "Starte neuen Backend-Container..."
+        ssh $sshHost "cd $remoteDir && $compose up -d backend"
+        if ($LASTEXITCODE -ne 0) { throw "Start des Backend-Containers ist fehlgeschlagen - die DB-Aenderung wurde aber bereits erfolgreich angewendet. Backup liegt unter ~/backups/$backupName. Manuell pruefen: ssh $sshHost `"cd $remoteDir && $compose logs backend --tail=50`"" }
+
+        Write-Host ""
+        Write-Host "Migrations-Status auf dem Server:"
+        ssh $sshHost "cd $remoteDir && $compose exec -T postgres psql -U teamcompass -d teamcompass -c 'SELECT * FROM \`"__EFMigrationsHistory\`";'"
+
+        Write-Host ""
+        Write-Host "Fertig. Backup liegt unter ~/backups/$backupName auf dem Server." -ForegroundColor Green
+        Write-Host "Logs pruefen: ssh $sshHost `"cd $remoteDir && $compose logs backend --tail=50`"" -ForegroundColor Green
     }
     finally {
-        Pop-Location
+        Remove-Item Env:\ConnectionStrings__Default -ErrorAction SilentlyContinue
     }
-
-    Write-Host ""
-    Write-Host "--- Geplante SQL-Aenderungen fuer PRODUKTIV ---" -ForegroundColor Yellow
-    Get-Content $scriptPath | Write-Host
-    Write-Host "--- Ende SQL ---" -ForegroundColor Yellow
-    Write-Host ""
-
-    if (-not (Confirm-Step "Diese Aenderungen jetzt auf die PRODUKTIONS-Datenbank anwenden?")) {
-        Write-Host "Abgebrochen." -ForegroundColor Yellow
-        return
-    }
-
-    $sshHost   = "strato-vm"
-    $remoteDir = "/opt/teamcompass/app"
-    $compose   = "docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml"
-
-    Write-Host ""
-    Write-Host "git pull auf dem Server..."
-    ssh $sshHost "cd $remoteDir && git pull"
-    if ($LASTEXITCODE -ne 0) { throw "git pull auf dem Server ist fehlgeschlagen." }
-
-    $backupName = "teamcompass-pre-update-$(Get-Date -Format 'yyyy-MM-dd-HHmm').sql.gz"
-    Write-Host "Backup wird erstellt: /var/backups/$backupName"
-    ssh $sshHost "cd $remoteDir && $compose exec -T postgres pg_dump -U teamcompass teamcompass | gzip > /var/backups/$backupName"
-    if ($LASTEXITCODE -ne 0) { throw "Backup auf dem Server ist fehlgeschlagen." }
-
-    Write-Host "Baue neues Backend-Image (noch ohne Start)..."
-    ssh $sshHost "cd $remoteDir && $compose build backend"
-    if ($LASTEXITCODE -ne 0) { throw "Backend-Image-Build auf dem Server ist fehlgeschlagen." }
-
-    Write-Host "Wende SQL-Aenderungen auf die Produktions-DB an..."
-    Get-Content $scriptPath -Raw | ssh $sshHost "cd $remoteDir && $compose exec -T postgres psql -U teamcompass -d teamcompass"
-    if ($LASTEXITCODE -ne 0) { throw "Anwenden der SQL-Aenderungen ist fehlgeschlagen. Backup liegt unter /var/backups/$backupName auf dem Server." }
-
-    Write-Host "Starte neuen Backend-Container..."
-    ssh $sshHost "cd $remoteDir && $compose up -d backend"
-    if ($LASTEXITCODE -ne 0) { throw "Start des Backend-Containers ist fehlgeschlagen." }
-
-    Write-Host ""
-    Write-Host "Migrations-Status auf dem Server:"
-    ssh $sshHost "cd $remoteDir && $compose exec -T postgres psql -U teamcompass -d teamcompass -c 'SELECT * FROM \`"__EFMigrationsHistory\`";'"
-
-    Write-Host ""
-    Write-Host "Fertig. Backup liegt unter /var/backups/$backupName auf dem Server." -ForegroundColor Green
-    Write-Host "Logs pruefen: ssh $sshHost `"cd $remoteDir && $compose logs backend --tail=50`"" -ForegroundColor Green
 }
 
 Write-Host "TeamCompass - Datenbank-Update" -ForegroundColor Cyan
