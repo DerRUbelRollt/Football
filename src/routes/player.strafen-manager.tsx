@@ -3,9 +3,18 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, type PlayerPenaltyRow } from "@/lib/api-client";
 import { getPlayerCode } from "@/lib/player-session";
+import { PENALTY_CATALOG } from "@/lib/penalty-catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ArrowLeft, Wallet, Search, Plus, Minus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -135,9 +144,15 @@ function PenaltyRow({
   onApply: (amount: number) => void;
   pending: boolean;
 }) {
-  const [amount, setAmount] = useState("5");
-  const parsed = Number(amount.replace(",", "."));
-  const valid = Number.isFinite(parsed) && parsed > 0;
+  const [open, setOpen] = useState(false);
+  const [customAmount, setCustomAmount] = useState("10");
+  const parsedCustom = Number(customAmount.replace(",", "."));
+  const validCustom = Number.isFinite(parsedCustom) && parsedCustom > 0;
+
+  const apply = (value: number) => {
+    onApply(value);
+    setOpen(false);
+  };
 
   return (
     <li className="flex flex-wrap items-center gap-3 py-3">
@@ -153,28 +168,77 @@ function PenaltyRow({
           {player.player_penalty.toFixed(2)} €
         </div>
       </div>
-      <div className="flex items-center gap-1.5">
-        <Input
-          type="number"
-          min="0"
-          step="0.5"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="w-20"
-        />
-        <Button size="sm" variant="outline" disabled={pending || !valid} onClick={() => onApply(parsed)} title="Strafe hinzufügen">
-          <Plus className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={pending || !valid || player.player_penalty <= 0}
-          onClick={() => onApply(-parsed)}
-          title="Strafe abziehen"
-        >
-          <Minus className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button size="sm" variant="outline" disabled={pending}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Strafe
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Strafe für {player.first_name} {player.last_name}
+            </DialogTitle>
+            <DialogDescription>Antippen fügt die Strafe direkt in Euro hinzu.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-4 -mx-1 px-1">
+            {PENALTY_CATALOG.map((group) => (
+              <div key={group.title}>
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                  {group.title}
+                </div>
+                <ul className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+                  {group.items.map((item) => (
+                    <li key={item.label} className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => apply(item.amount)}
+                        className="flex-1 flex items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-secondary/60 disabled:opacity-50"
+                      >
+                        <span>{item.label}</span>
+                        <span className="font-mono font-semibold shrink-0">{item.amount.toFixed(2)} €</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={pending || player.player_penalty <= 0}
+                        onClick={() => apply(-item.amount)}
+                        title="Strafe abziehen"
+                        className="px-2.5 py-2.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-border pt-3 flex items-center gap-1.5">
+            <span className="text-sm text-muted-foreground mr-auto">Sonstiger Betrag</span>
+            <Input
+              type="number"
+              min="0"
+              step="0.5"
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              className="w-20"
+            />
+            <Button size="sm" variant="outline" disabled={pending || !validCustom} onClick={() => apply(parsedCustom)} title="Strafe hinzufügen">
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending || !validCustom || player.player_penalty <= 0}
+              onClick={() => apply(-parsedCustom)}
+              title="Strafe abziehen"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </li>
   );
 }
