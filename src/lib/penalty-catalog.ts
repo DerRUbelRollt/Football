@@ -14,15 +14,18 @@ export const PENALTY_CATALOG: PenaltyCatalogGroup[] = [
   {
     title: "Allgemein",
     items: [
-      { label: "Meckern mit Mitspielern (Trainer entscheidet)", amount: 10 },
-      { label: "Gelb-Rote Karte (wegen Meckern)", amount: 15 },
-      { label: "Gelbe Karte (wegen Meckern)", amount: 10 },
-      { label: "Rote Karte wegen Tätlichkeit (alles außer Foul- und Handspiel)", amount: 30 },
-      { label: "Diskutieren mit dem Trainer (Trainer entscheidet)", amount: 10 },
-      { label: "Unentschuldigtes Fehlen beim Spiel", amount: 50 },
-      { label: "Unentschuldigtes Fehlen beim Training", amount: 10 },
-      { label: "Zu spät zum Training/Spiel (pro Minute, Abmeldung muss 1h vorher erfolgen, max. 10 €)", amount: 1 },
-      { label: "Trainingsanzug, Warmmachshirt vergessen", amount: 5 },
+{ label: "Meckern (Trainerentscheidung)", amount: 10 },
+{ label: "Gelb-Rote Karte (Meckern)", amount: 15 },
+{ label: "Gelbe Karte (Meckern)", amount: 10 },
+{ label: "Rote Karte (Tätlichkeit)", amount: 30 },
+{ label: "Diskutieren mit Trainer", amount: 10 },
+{ label: "Unentschuldigt gefehlt (Spiel)", amount: 50 },
+{ label: "Unentschuldigt gefehlt (Training)", amount: 10 },
+{ label: "Zu spät (pro Min., max. 10 €)", amount: 1 },
+{ label: "Ball über Fangnetz", amount: 1 },
+{ label: "Rote Karte (frust)", amount: 30 },
+{ label: "Gelb-rote Karte (Frust)", amount: 20 },
+
     ],
   },
   {
