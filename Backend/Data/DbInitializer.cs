@@ -7,8 +7,6 @@ public static class DbInitializer
 {
     public static void Initialize(AppDbContext ctx)
     {
-        ctx.Database.EnsureCreated();
-
         if (!ctx.Trainers.Any())
         {
             var ph = new PasswordHasher<Trainer>();

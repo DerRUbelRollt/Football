@@ -161,22 +161,6 @@ Ruhe probieren.
 `dotnet ef database update` solche Schritte automatisch — steht auch schon als bekannte Einschränkung in
 `deploy.md`.)*
 
-**Ausstehend für den nächsten Deploy: PlayerPenalty-Feature (StrafenManager)**
-
-`PlayerPenalty` (numeric(10,2)) und `PenaltyManager` (boolean) fehlen in Produktion noch. Vorgehen wie in
-Abschnitt 4b: zuerst Backup (Abschnitt 3), dann Backend-Image bauen (aber noch nicht starten), dann diesen
-Befehl ausführen (idempotent dank `IF NOT EXISTS` — schadet also nicht, falls er versehentlich zweimal
-läuft), erst danach den neuen Backend-Container starten:
-
-```bash
-docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres \
-  psql -U teamcompass -d teamcompass \
-  -c 'ALTER TABLE "Players" ADD COLUMN IF NOT EXISTS "PlayerPenalty" numeric(10,2) NOT NULL DEFAULT 0;' \
-  -c 'ALTER TABLE "Players" ADD COLUMN IF NOT EXISTS "PenaltyManager" boolean NOT NULL DEFAULT false;' \
-  -c 'UPDATE "Players" SET "PenaltyManager" = true WHERE "PlayerCode" = '"'"'C5PHN8TS'"'"';'
-```
-
-(Die `PlayerPenalty`-Zeile ist ein No-Op falls die Spalte dort schon existiert — sonst mit `ADD COLUMN IF NOT EXISTS` ausführen.)
 
 ### 4c. Die Postgres-Version selbst aktualisieren (z. B. von 15 auf 16)
 
