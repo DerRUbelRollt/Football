@@ -20,6 +20,10 @@ public class AppDbContext : DbContext
             .HasIndex(t => t.Name)
             .IsUnique();
 
+        modelBuilder.Entity<Player>()
+            .Property(p => p.PlayerPenalty)
+            .HasPrecision(10, 2);
+
         modelBuilder.Entity<PlayerGroupMembership>()
             .HasIndex(m => new { m.PlayerId, m.GroupId })
             .IsUnique();
