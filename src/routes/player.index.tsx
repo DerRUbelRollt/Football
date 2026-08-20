@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api-client";
 import { getPlayerCode, clearPlayerCode } from "@/lib/player-session";
+import { formatPenaltyBalance } from "@/lib/penalty-format";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Trophy, Activity, MapPin, Clock, Check, X, LogOut, Calendar, Wallet } from "lucide-react";
@@ -64,6 +65,7 @@ function PlayerHome() {
   }
 
   const { player, upcoming, history } = q.data!;
+  const { moneyText, crateText, hasDebt } = formatPenaltyBalance(player.player_penalty, player.beer_crates);
   const all = [...upcoming, ...history];
   const accepted = all.filter((e: any) => e.attendances?.[0]?.status === "accepted").length;
   const decided = all.filter((e: any) => {
@@ -114,9 +116,15 @@ function PlayerHome() {
           <MiniStat label="Nächstes Spiel" value={nextGame ? format(new Date(nextGame.event_at), "d. MMM", { locale: de }) : "–"} icon={Trophy} />
           <MiniStat
             label="Schulden"
-            value={q.data?.player.player_penalty ? `${q.data?.player.player_penalty} €` : "–"}
-            icon={(q.data?.player.player_penalty ?? 0) > 0 ? Wallet : Check}
-            danger={(q.data?.player.player_penalty ?? 0) > 0}
+            value={
+              <span className="inline-flex items-baseline gap-1.5">
+                <span>{moneyText}</span>
+                <span className="text-muted-foreground/40 font-normal">|</span>
+                <span>{crateText}</span>
+              </span>
+            }
+            icon={hasDebt ? Wallet : Check}
+            danger={hasDebt}
           />
           <MiniStat label="Quote" value={`${rate}%`} icon={Calendar} />
         </div>

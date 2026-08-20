@@ -26,6 +26,7 @@ public class PlayerController : ControllerBase
             player_code = player.PlayerCode,
             group_id = firstMembership?.GroupId ?? 0,
             player_penalty = player.PlayerPenalty,
+            beer_crates = player.BeerCrates,
             penalty_manager = player.PenaltyManager,
             groups = player.GroupMemberships.Select(m => new { name = m.Group!.Name }).ToList() } });
     }
@@ -45,7 +46,7 @@ public class PlayerController : ControllerBase
         var histList = history.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, event_at = e.EventAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
 
         var firstMembership = player.GroupMemberships.OrderBy(m => m.GroupId).FirstOrDefault();
-        var p = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = firstMembership?.GroupId ?? 0, player_penalty = player.PlayerPenalty, penalty_manager = player.PenaltyManager, groups = player.GroupMemberships.Select(m => new { name = m.Group!.Name }).ToList() };
+        var p = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = firstMembership?.GroupId ?? 0, player_penalty = player.PlayerPenalty, beer_crates = player.BeerCrates, penalty_manager = player.PenaltyManager, groups = player.GroupMemberships.Select(m => new { name = m.Group!.Name }).ToList() };
 
         return Ok(new { player = p, upcoming = upList, history = histList });
     }
@@ -99,6 +100,7 @@ public class PlayerController : ControllerBase
             return NotFound(new { error = "Ungültige Spieler-ID" });
 
         player.PlayerPenalty = Math.Max(0, player.PlayerPenalty + req.Amount);
+        player.BeerCrates = Math.Max(0, player.BeerCrates + req.CrateAmount);
 
         await _ctx.SaveChangesAsync();
 
@@ -106,7 +108,8 @@ public class PlayerController : ControllerBase
         {
             ok = true,
             player_id = player.Id,
-            player_penalty = player.PlayerPenalty
+            player_penalty = player.PlayerPenalty,
+            beer_crates = player.BeerCrates
         });
     }
 
@@ -120,14 +123,14 @@ public class PlayerController : ControllerBase
         var players = await _ctx.Players
             .OrderByDescending(p => p.PlayerPenalty)
             .ThenBy(p => p.LastName).ThenBy(p => p.FirstName)
-            .Select(p => new { id = p.Id, first_name = p.FirstName, last_name = p.LastName, player_code = p.PlayerCode, player_penalty = p.PlayerPenalty })
+            .Select(p => new { id = p.Id, first_name = p.FirstName, last_name = p.LastName, player_code = p.PlayerCode, player_penalty = p.PlayerPenalty, beer_crates = p.BeerCrates })
             .ToListAsync();
 
         return Ok(players);
     }
 }
 
-public record PlayerPenaltyRequest(string ManagerCode, string Code, decimal Amount);
+public record PlayerPenaltyRequest(string ManagerCode, string Code, decimal Amount, int CrateAmount = 0);
 public record ManagerCodeRequest(string ManagerCode);
 public record CodeRequest(string Code);
 public record AttendanceRequest(string Code, int EventId, string Status);

@@ -6,6 +6,7 @@ const schema = z.object({
   managerCode: z.string().trim().min(4).max(32),
   code: z.string().trim().min(4).max(32),
   amount: z.number(),
+  crateAmount: z.number().int().optional(),
 });
 
 export const Route = createFileRoute("/api/player/penalty")({

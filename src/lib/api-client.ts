@@ -80,6 +80,7 @@ export interface PlayerSummary {
   player_code: string;
   group_id: number;
   player_penalty: number;
+  beer_crates: number;
   penalty_manager: boolean;
   groups: { name: string }[];
 }
@@ -90,6 +91,7 @@ export interface PlayerPenaltyRow {
   last_name: string;
   player_code: string;
   player_penalty: number;
+  beer_crates: number;
 }
 
 export interface PlayerOverview {
@@ -207,8 +209,8 @@ export const api = {
       apiFetch<PlayerOverview>("/api/player/overview", { method: "POST", body }),
     setAttendance: (body: { code: string; eventId: number; status: AttendanceStatus }) =>
       apiFetch<{ ok: true }>("/api/player/attendance", { method: "POST", body }),
-    penalty: (body: { managerCode: string; code: string; amount: number }) =>
-      apiFetch<{ ok: true; player_id: number; player_penalty: number }>("/api/player/penalty", { method: "PATCH", body }),
+    penalty: (body: { managerCode: string; code: string; amount: number; crateAmount?: number }) =>
+      apiFetch<{ ok: true; player_id: number; player_penalty: number; beer_crates: number }>("/api/player/penalty", { method: "PATCH", body }),
     allPenalties: (body: { managerCode: string }) =>
       apiFetch<PlayerPenaltyRow[]>("/api/player/penalties", { method: "POST", body }),
   },

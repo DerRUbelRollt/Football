@@ -1,6 +1,7 @@
 export interface PenaltyCatalogItem {
   label: string;
-  amount: number;
+  amount?: number;
+  crates?: number;
 }
 
 export interface PenaltyCatalogGroup {
@@ -8,8 +9,7 @@ export interface PenaltyCatalogGroup {
   items: PenaltyCatalogItem[];
 }
 
-// Aus dem Strafenkatalog SVHrH 2026-2027. Strafen, die als Kiste (Bier) verhängt werden,
-// sind bewusst ausgeschlossen, da sie keinen Euro-Betrag haben.
+// Aus dem Strafenkatalog SVHrH 2026-2027.
 export const PENALTY_CATALOG: PenaltyCatalogGroup[] = [
   {
     title: "Allgemein",
@@ -34,6 +34,18 @@ export const PENALTY_CATALOG: PenaltyCatalogGroup[] = [
       { label: "Diskutieren im Eck (beide rein)", amount: 1 },
       { label: "Beinschuss im Eck", amount: 1 },
       { label: "Doppelrunde im Eck (20 Kontakte)", amount: 1 },
+    ],
+  },
+  {
+    title: "Bier-Strafen",
+    items: [
+      { label: "1. Kapitän (Aktive)", crates: 1 },
+      { label: "1. Spiel (Aktive)", crates: 1 },
+      { label: "1. Tor (Aktive)", crates: 1 },
+      { label: "Bier/Rauchen im Trikot", crates: 1 },
+      { label: "Bier verschüttet", crates: 1 },
+      { label: "Elfmeter verschossen", crates: 1 },
+      { label: "Kiste ohne Freigabe", crates: 1 },
     ],
   },
 ];
