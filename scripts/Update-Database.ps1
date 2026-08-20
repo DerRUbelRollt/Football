@@ -7,6 +7,10 @@ Live-Diffs: der Abgleich passiert immer über generierte, angezeigte SQL, nie du
 automatisches DROP/ALTER anhand eines reinen Ist/Soll-Vergleichs. Wendet nichts an, ohne
 die geplante SQL vorher vollständig anzuzeigen und explizit mit "ja" bestätigen zu lassen.
 
+Im Produktiv-Pfad baut und startet das Skript zusätzlich Backend- und Frontend-Container neu
+(nicht nur die DB) - nach "git push" + "git pull" auf dem Server reicht damit ein einziger
+Lauf dieses Skripts, um die VM komplett auf den neuen Stand zu bringen.
+
 Voraussetzung: Backend/Data/Migrations/ existiert bereits (siehe Plan, Teil A).
 #>
 
@@ -228,6 +232,7 @@ function Invoke-LocalUpdate {
 
 function Invoke-ProdUpdate {
     Write-Host "=== Produktiv-Update (via SSH) ===" -ForegroundColor Cyan
+    Write-Host "Baut/startet neben der DB-Migration auch Backend- und Frontend-Container neu." -ForegroundColor Yellow
     Write-Host "Voraussetzung: Migrationen wurden bereits lokal erstellt/getestet und sind committed + gepusht." -ForegroundColor Yellow
     Write-Host "Voraussetzung: Produktion wurde einmalig gebaselined (siehe Plan, Teil A.5)." -ForegroundColor Yellow
     Write-Host ""
@@ -289,25 +294,25 @@ function Invoke-ProdUpdate {
         ssh $sshHost "cd $remoteDir && git pull"
         if ($LASTEXITCODE -ne 0) { throw "git pull auf dem Server ist fehlgeschlagen. Backup liegt bereits unter ~/backups/$backupName, DB wurde noch NICHT veraendert." }
 
-        Write-Host "Baue neues Backend-Image (noch ohne Start)..."
-        ssh $sshHost "cd $remoteDir && $compose build backend"
-        if ($LASTEXITCODE -ne 0) { throw "Backend-Image-Build auf dem Server ist fehlgeschlagen. Backup liegt unter ~/backups/$backupName, DB wurde noch NICHT veraendert." }
+        Write-Host "Baue neue Backend- und Frontend-Images (noch ohne Start)..."
+        ssh $sshHost "cd $remoteDir && $compose build backend frontend"
+        if ($LASTEXITCODE -ne 0) { throw "Image-Build (Backend/Frontend) auf dem Server ist fehlgeschlagen. Backup liegt unter ~/backups/$backupName, DB wurde noch NICHT veraendert." }
 
         Write-Host "Wende SQL-Aenderungen auf die Produktions-DB an..."
         Get-Content $scriptPath -Raw | ssh $sshHost "cd $remoteDir && $compose exec -T postgres psql -v ON_ERROR_STOP=1 -U teamcompass -d teamcompass"
         if ($LASTEXITCODE -ne 0) { throw "Anwenden der SQL-Aenderungen ist fehlgeschlagen (psql-Fehler, per ON_ERROR_STOP abgebrochen). Jede bereits erfolgreich abgeschlossene Migration bleibt angewendet (eigene Transaktion pro Migration), die fehlgeschlagene wurde zurueckgerollt. Backup liegt unter ~/backups/$backupName. Alten Backend-Container NICHT neu starten, bevor die Ursache geklaert ist." }
 
-        Write-Host "Starte neuen Backend-Container..."
-        ssh $sshHost "cd $remoteDir && $compose up -d backend"
-        if ($LASTEXITCODE -ne 0) { throw "Start des Backend-Containers ist fehlgeschlagen - die DB-Aenderung wurde aber bereits erfolgreich angewendet. Backup liegt unter ~/backups/$backupName. Manuell pruefen: ssh $sshHost `"cd $remoteDir && $compose logs backend --tail=50`"" }
+        Write-Host "Starte neue Backend- und Frontend-Container..."
+        ssh $sshHost "cd $remoteDir && $compose up -d backend frontend"
+        if ($LASTEXITCODE -ne 0) { throw "Start von Backend/Frontend ist fehlgeschlagen - die DB-Aenderung wurde aber bereits erfolgreich angewendet. Backup liegt unter ~/backups/$backupName. Manuell pruefen: ssh $sshHost `"cd $remoteDir && $compose logs --tail=50`"" }
 
         Write-Host ""
         Write-Host "Migrations-Status auf dem Server:"
         ssh $sshHost "cd $remoteDir && $compose exec -T postgres psql -U teamcompass -d teamcompass -c 'SELECT * FROM \`"__EFMigrationsHistory\`";'"
 
         Write-Host ""
-        Write-Host "Fertig. Backup liegt unter ~/backups/$backupName auf dem Server." -ForegroundColor Green
-        Write-Host "Logs pruefen: ssh $sshHost `"cd $remoteDir && $compose logs backend --tail=50`"" -ForegroundColor Green
+        Write-Host "Fertig. Backend und Frontend laufen mit dem neuen Stand. Backup liegt unter ~/backups/$backupName auf dem Server." -ForegroundColor Green
+        Write-Host "Logs pruefen: ssh $sshHost `"cd $remoteDir && $compose logs --tail=50`"" -ForegroundColor Green
     }
     finally {
         Remove-Item Env:\ConnectionStrings__Default -ErrorAction SilentlyContinue
