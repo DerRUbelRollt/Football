@@ -255,9 +255,12 @@ function formatScore(home: number | null, away: number | null): string {
 }
 
 function formatFilterBeerCrates(penalties: PlayerTeamPenaltyRow[]): PlayerTeamPenaltyRow[] {
-  const penaltyFilteredByBeerCrates = [...penalties];
-  penaltyFilteredByBeerCrates.sort((a, b) => b.beer_crates - a.beer_crates);
-  return penaltyFilteredByBeerCrates;
+  // filter() und slice() mutieren NICHT das Ausgangsarray, sondern geben jeweils ein neues zurück.
+  // Deshalb hier verketten statt als separate Anweisungen aufzurufen - sonst geht das Ergebnis verloren.
+  return penalties
+    .filter((p) => p.beer_crates !== 0) // nur Spieler mit Bierkasten-Schulden anzeigen
+    .sort((a, b) => b.beer_crates - a.beer_crates) // sort() mutiert zwar in-place, aber das ist hier unproblematisch, da filter() bereits eine neue Kopie erzeugt hat
+    .slice(0, 10); // nur die Top 10 Spieler anzeigen
 }
 
 function LiveBadge({ eventAt }: { eventAt: string }) {

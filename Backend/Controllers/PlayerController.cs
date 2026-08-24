@@ -179,7 +179,7 @@ public class PlayerController : ControllerBase
         // Ergebnis eingetragen werden kann. Ausserhalb dieses Fensters zaehlt ein Spiel als "vergangen".
         var currentGame = await _ctx.Events
             .Where(e => groupIds.Contains(e.GroupId) && e.EventType == "game"
-                && e.EventAt <= now.AddHours(1) && e.EventAt > now.AddHours(-3))
+                && e.EventAt <= now.AddHours(-1.25) && e.EventAt > now.AddHours(-3.25))
             .OrderBy(e => e.EventAt)
             .Select(e => new
             {
