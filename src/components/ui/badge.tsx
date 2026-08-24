@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- shadcn/ui: Komponente + Variants-Helper bewusst in einer Datei */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 

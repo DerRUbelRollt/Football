@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api-client";
 import { getPlayerCode, clearPlayerCode } from "@/lib/player-session";
 import { formatPenaltyBalance } from "@/lib/penalty-format";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Trophy, Activity, MapPin, Clock, Check, X, LogOut, Calendar, Wallet } from "lucide-react";
+import { Trophy, Activity, MapPin, Clock, Check, X, LogOut, Calendar, Wallet, Users, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { toast } from "sonner";
@@ -67,14 +67,14 @@ function PlayerHome() {
   const { player, upcoming, history } = q.data!;
   const { moneyText, crateText, hasDebt } = formatPenaltyBalance(player.player_penalty, player.beer_crates);
   const all = [...upcoming, ...history];
-  const accepted = all.filter((e: any) => e.attendances?.[0]?.status === "accepted").length;
-  const decided = all.filter((e: any) => {
+  const accepted = all.filter((e) => e.attendances?.[0]?.status === "accepted").length;
+  const decided = all.filter((e) => {
     const s = e.attendances?.[0]?.status;
     return s === "accepted" || s === "declined";
   }).length;
   const rate = decided ? Math.round((accepted / decided) * 100) : 0;
-  const nextTraining = upcoming.find((e: any) => e.event_type === "training");
-  const nextGame = upcoming.find((e: any) => e.event_type === "game");
+  const nextTraining = upcoming.find((e) => e.event_type === "training");
+  const nextGame = upcoming.find((e) => e.event_type === "game");
 
   return (
     <div className="min-h-screen bg-pitch">
@@ -105,7 +105,12 @@ function PlayerHome() {
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Hallo {player.first_name} 👋</h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Hallo {player.first_name} 👋</h1>
+            <Button variant="outline" size="sm" onClick={() => nav({ to: "/player/mannschaft" })}>
+              <Users className="h-4 w-4 mr-1" /> Mannschaft
+            </Button>
+          </div>
           <p className="text-muted-foreground text-sm mt-1">
             {player.groups?.length ? player.groups.map((g: { name: string }) => g.name).join(" · ") : "Keine Mannschaften"}
           </p>
@@ -137,7 +142,7 @@ function PlayerHome() {
             </div>
           ) : (
             <div className="space-y-3">
-              {upcoming.map((e: any, i: number) => {
+              {upcoming.map((e, i) => {
                 const status = e.attendances[0]?.status ?? "pending";
                 const deadline = new Date(e.event_at);
                 deadline.setHours(16, 0, 0, 0);
@@ -195,7 +200,7 @@ function PlayerHome() {
           <section>
             <h2 className="font-bold text-lg mb-3">Deine Historie</h2>
             <div className="card-elevated divide-y divide-border">
-              {history.slice(0, 20).map((h: any) => (
+              {history.slice(0, 20).map((h) => (
                 <div key={h.id} className="flex items-center gap-3 p-4">
                   <div className={`h-8 w-8 rounded-lg grid place-items-center shrink-0 ${h.event_type === "training" ? "bg-primary/15 text-primary" : "bg-chart-2/15 text-chart-2"}`}>
                     {h.event_type === "training" ? <Activity className="h-4 w-4" /> : <Trophy className="h-4 w-4" />}
@@ -222,8 +227,8 @@ function MiniStat({
   danger = false,
 }: {
   label: string;
-  value: any;
-  icon: any;
+  value: ReactNode;
+  icon: LucideIcon;
   danger?: boolean;
 }) {
   return (

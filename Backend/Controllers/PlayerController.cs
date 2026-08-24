@@ -113,6 +113,112 @@ public class PlayerController : ControllerBase
         });
     }
 
+    [HttpPatch("event-result")]
+    public async Task<IActionResult> SetEventResult([FromBody] PlayerEventResultRequest req)
+    {
+        var player = await _ctx.Players.Include(p => p.GroupMemberships)
+            .FirstOrDefaultAsync(p => p.PlayerCode == req.Code.ToUpper());
+        if (player == null) return NotFound(new { error = "Ungültige Spieler-ID" });
+
+        var ev = await _ctx.Events.FirstOrDefaultAsync(e => e.Id == req.EventId);
+        if (ev == null) return NotFound(new { error = "Ereignis nicht gefunden" });
+        if (ev.EventType != "game") return BadRequest(new { error = "Ergebnis nur bei Spielen möglich" });
+
+        var groupIds = player.GroupMemberships.Select(m => m.GroupId).ToList();
+        if (!groupIds.Contains(ev.GroupId)) return Unauthorized(new { error = "Nicht deine Mannschaft" });
+
+        ev.HomeScore = req.HomeScore;
+        ev.AwayScore = req.AwayScore;
+        await _ctx.SaveChangesAsync();
+        return Ok(new { ok = true, home_score = ev.HomeScore, away_score = ev.AwayScore });
+    }
+
+    [HttpPost("team")]
+    public async Task<IActionResult> Team([FromBody] CodeRequest req)
+    {
+        var player = await _ctx.Players.Include(p => p.GroupMemberships)
+            .FirstOrDefaultAsync(p => p.PlayerCode == req.Code.ToUpper());
+        if (player == null) return NotFound(new { error = "Ungültige Spieler-ID" });
+
+        var groupIds = player.GroupMemberships.Select(m => m.GroupId).ToList();
+        var now = DateTime.UtcNow;
+
+        var attendanceRaw = await _ctx.Attendances
+            .Where(a => groupIds.Contains(a.Event!.GroupId) && a.Event!.EventAt < now)
+            .GroupBy(a => new { a.PlayerId, First = a.Player!.FirstName, Last = a.Player.LastName })
+            .Select(g => new
+            {
+                player_id = g.Key.PlayerId,
+                first_name = g.Key.First,
+                last_name = g.Key.Last,
+                total = g.Count(),
+                accepted = g.Count(a => a.Status == "accepted"),
+                declined = g.Count(a => a.Status == "declined"),
+                pending = g.Count(a => a.Status == "pending"),
+            })
+            .ToListAsync();
+
+        var attendanceTable = attendanceRaw
+            .Select(r => new
+            {
+                r.player_id,
+                r.first_name,
+                r.last_name,
+                r.total,
+                r.accepted,
+                r.declined,
+                r.pending,
+                quote = r.total > 0 ? (int)Math.Round(r.accepted * 100.0 / r.total) : 0
+            })
+            .OrderByDescending(r => r.quote)
+            .ThenBy(r => r.last_name).ThenBy(r => r.first_name)
+            .ToList();
+
+        // Ein Spiel gilt als "aktuell" (laufend/kurz bevorstehend) ab 1 Stunde vor Anpfiff bis 3 Stunden
+        // danach (grosszuegiger Puffer fuer Spieldauer + Nachbereitung), damit dort schon vorab/live ein
+        // Ergebnis eingetragen werden kann. Ausserhalb dieses Fensters zaehlt ein Spiel als "vergangen".
+        var currentGame = await _ctx.Events
+            .Where(e => groupIds.Contains(e.GroupId) && e.EventType == "game"
+                && e.EventAt <= now.AddHours(1) && e.EventAt > now.AddHours(-3))
+            .OrderBy(e => e.EventAt)
+            .Select(e => new
+            {
+                id = e.Id,
+                title = e.Title,
+                opponent = e.Opponent,
+                home_away = e.HomeAway,
+                event_at = e.EventAt,
+                home_score = e.HomeScore,
+                away_score = e.AwayScore
+            })
+            .FirstOrDefaultAsync();
+
+        // Fuer die Mannschaft-Ansicht reichen die letzten 5 vergangenen Spiele (Formkurve + Liste).
+        var pastGames = await _ctx.Events
+            .Where(e => groupIds.Contains(e.GroupId) && e.EventType == "game" && e.EventAt <= now.AddHours(-3))
+            .OrderByDescending(e => e.EventAt)
+            .Take(5)
+            .Select(e => new
+            {
+                id = e.Id,
+                title = e.Title,
+                opponent = e.Opponent,
+                home_away = e.HomeAway,
+                event_at = e.EventAt,
+                home_score = e.HomeScore,
+                away_score = e.AwayScore
+            })
+            .ToListAsync();
+
+        var penalties = await _ctx.Players
+            .OrderByDescending(p => p.PlayerPenalty)
+            .ThenBy(p => p.LastName).ThenBy(p => p.FirstName)
+            .Select(p => new { id = p.Id, first_name = p.FirstName, last_name = p.LastName, player_penalty = p.PlayerPenalty, beer_crates = p.BeerCrates })
+            .ToListAsync();
+
+        return Ok(new { attendanceTable, currentGame, pastGames, penalties });
+    }
+
     [HttpPost("penalties")]
     public async Task<IActionResult> ListPenalties([FromBody] ManagerCodeRequest req)
     {
@@ -134,3 +240,4 @@ public record PlayerPenaltyRequest(string ManagerCode, string Code, decimal Amou
 public record ManagerCodeRequest(string ManagerCode);
 public record CodeRequest(string Code);
 public record AttendanceRequest(string Code, int EventId, string Status);
+public record PlayerEventResultRequest(string Code, int EventId, int? HomeScore, int? AwayScore);

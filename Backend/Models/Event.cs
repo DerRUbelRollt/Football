@@ -7,6 +7,8 @@ public class Event
     public string Title { get; set; } = null!;
     public string? Opponent { get; set; }
     public string? HomeAway { get; set; }
+    public int? HomeScore { get; set; }
+    public int? AwayScore { get; set; }
     public string? Location { get; set; }
     public string? MeetingPoint { get; set; }
     public DateTime EventAt { get; set; }

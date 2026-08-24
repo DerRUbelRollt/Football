@@ -94,13 +94,35 @@ export interface PlayerPenaltyRow {
   beer_crates: number;
 }
 
-export interface PlayerOverview {
-  player: PlayerSummary;
-  upcoming: any[];
-  history: any[];
+export type AttendanceStatus = "accepted" | "declined" | "pending";
+
+export interface PlayerEventAttendance {
+  id?: number;
+  status: AttendanceStatus;
+  player_id: number;
 }
 
-export type AttendanceStatus = "accepted" | "declined" | "pending";
+export interface PlayerHistoryEvent {
+  id: number;
+  event_type: "training" | "game";
+  title: string;
+  event_at: string;
+  attendances: PlayerEventAttendance[];
+}
+
+export interface PlayerUpcomingEvent extends PlayerHistoryEvent {
+  opponent: string | null;
+  home_away: "home" | "away" | null;
+  location: string | null;
+  meeting_point: string | null;
+  description: string | null;
+}
+
+export interface PlayerOverview {
+  player: PlayerSummary;
+  upcoming: PlayerUpcomingEvent[];
+  history: PlayerHistoryEvent[];
+}
 
 export interface GroupSummary {
   id: number;
@@ -152,6 +174,8 @@ export interface EventDetail extends EventListItem {
   meeting_point: string | null;
   description: string | null;
   group_id: number;
+  home_score: number | null;
+  away_score: number | null;
 }
 
 export interface NewEvent {
@@ -190,6 +214,42 @@ export interface StatsAttendanceRow {
   events: { event_at: string } | null;
 }
 
+export interface PlayerTeamAttendanceRow {
+  player_id: number;
+  first_name: string;
+  last_name: string;
+  total: number;
+  accepted: number;
+  declined: number;
+  pending: number;
+  quote: number;
+}
+
+export interface PlayerTeamGameRow {
+  id: number;
+  title: string;
+  opponent: string | null;
+  home_away: "home" | "away" | null;
+  event_at: string;
+  home_score: number | null;
+  away_score: number | null;
+}
+
+export interface PlayerTeamPenaltyRow {
+  id: number;
+  first_name: string;
+  last_name: string;
+  player_penalty: number;
+  beer_crates: number;
+}
+
+export interface PlayerTeamData {
+  attendanceTable: PlayerTeamAttendanceRow[];
+  currentGame: PlayerTeamGameRow | null;
+  pastGames: PlayerTeamGameRow[];
+  penalties: PlayerTeamPenaltyRow[];
+}
+
 export const api = {
   auth: {
     login: (body: { name: string; password: string }) =>
@@ -213,6 +273,10 @@ export const api = {
       apiFetch<{ ok: true; player_id: number; player_penalty: number; beer_crates: number }>("/api/player/penalty", { method: "PATCH", body }),
     allPenalties: (body: { managerCode: string }) =>
       apiFetch<PlayerPenaltyRow[]>("/api/player/penalties", { method: "POST", body }),
+    team: (body: { code: string }) =>
+      apiFetch<PlayerTeamData>("/api/player/team", { method: "POST", body }),
+    setEventResult: (body: { code: string; eventId: number; homeScore: number | null; awayScore: number | null }) =>
+      apiFetch<{ ok: true; home_score: number | null; away_score: number | null }>("/api/player/event-result", { method: "PATCH", body }),
   },
   groups: {
     list: () => apiFetch<GroupSummary[]>("/api/groups"),
@@ -243,6 +307,8 @@ export const api = {
       apiFetch<{ ok: true }>(`/api/events/${eventId}`, { method: "DELETE" }),
     attendances: (eventId: string | number) =>
       apiFetch<EventAttendanceRow[]>(`/api/events/${eventId}/attendances`),
+    setResult: (eventId: string | number, body: { homeScore: number | null; awayScore: number | null }) =>
+      apiFetch<{ ok: true; home_score: number | null; away_score: number | null }>(`/api/events/${eventId}/result`, { method: "PATCH", body }),
   },
   attendances: {
     setStatus: (attendanceId: number, status: AttendanceStatus) =>

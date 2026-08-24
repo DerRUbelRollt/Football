@@ -16,6 +16,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayerIndexRouteImport } from './routes/player.index'
 import { Route as PlayerStrafenManagerRouteImport } from './routes/player.strafen-manager'
+import { Route as PlayerMannschaftRouteImport } from './routes/player.mannschaft'
 import { Route as ApiPlayersRouteImport } from './routes/api/players'
 import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authenticated/statistics'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -29,10 +30,12 @@ import { Route as AuthenticatedEventsIndexRouteImport } from './routes/_authenti
 import { Route as ApiStatsDashboardRouteImport } from './routes/api/stats.dashboard'
 import { Route as ApiStatsAttendanceRouteImport } from './routes/api/stats.attendance'
 import { Route as ApiPlayersPlayerIdRouteImport } from './routes/api/players.$playerId'
+import { Route as ApiPlayerTeamRouteImport } from './routes/api/player.team'
 import { Route as ApiPlayerPenaltyRouteImport } from './routes/api/player.penalty'
 import { Route as ApiPlayerPenaltiesRouteImport } from './routes/api/player.penalties'
 import { Route as ApiPlayerOverviewRouteImport } from './routes/api/player.overview'
 import { Route as ApiPlayerLoginRouteImport } from './routes/api/player.login'
+import { Route as ApiPlayerEventResultRouteImport } from './routes/api/player.event-result'
 import { Route as ApiPlayerAttendanceRouteImport } from './routes/api/player.attendance'
 import { Route as ApiGroupsGroupIdRouteImport } from './routes/api/groups.$groupId'
 import { Route as ApiEventsEventIdRouteImport } from './routes/api/events.$eventId'
@@ -45,6 +48,7 @@ import { Route as ApiAttendancesAttendanceIdRouteImport } from './routes/api/att
 import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
 import { Route as AuthenticatedEventsEventIdRouteImport } from './routes/_authenticated/events.$eventId'
 import { Route as ApiGroupsGroupIdPlayersRouteImport } from './routes/api/groups.$groupId.players'
+import { Route as ApiEventsEventIdResultRouteImport } from './routes/api/events.$eventId.result'
 import { Route as ApiEventsEventIdAttendancesRouteImport } from './routes/api/events.$eventId.attendances'
 import { Route as ApiPlayersPlayerIdGroupsGroupIdRouteImport } from './routes/api/players.$playerId.groups.$groupId'
 
@@ -80,6 +84,11 @@ const PlayerIndexRoute = PlayerIndexRouteImport.update({
 const PlayerStrafenManagerRoute = PlayerStrafenManagerRouteImport.update({
   id: '/player/strafen-manager',
   path: '/player/strafen-manager',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlayerMannschaftRoute = PlayerMannschaftRouteImport.update({
+  id: '/player/mannschaft',
+  path: '/player/mannschaft',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPlayersRoute = ApiPlayersRouteImport.update({
@@ -149,6 +158,11 @@ const ApiPlayersPlayerIdRoute = ApiPlayersPlayerIdRouteImport.update({
   path: '/$playerId',
   getParentRoute: () => ApiPlayersRoute,
 } as any)
+const ApiPlayerTeamRoute = ApiPlayerTeamRouteImport.update({
+  id: '/api/player/team',
+  path: '/api/player/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPlayerPenaltyRoute = ApiPlayerPenaltyRouteImport.update({
   id: '/api/player/penalty',
   path: '/api/player/penalty',
@@ -167,6 +181,11 @@ const ApiPlayerOverviewRoute = ApiPlayerOverviewRouteImport.update({
 const ApiPlayerLoginRoute = ApiPlayerLoginRouteImport.update({
   id: '/api/player/login',
   path: '/api/player/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayerEventResultRoute = ApiPlayerEventResultRouteImport.update({
+  id: '/api/player/event-result',
+  path: '/api/player/event-result',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPlayerAttendanceRoute = ApiPlayerAttendanceRouteImport.update({
@@ -232,6 +251,11 @@ const ApiGroupsGroupIdPlayersRoute = ApiGroupsGroupIdPlayersRouteImport.update({
   path: '/players',
   getParentRoute: () => ApiGroupsGroupIdRoute,
 } as any)
+const ApiEventsEventIdResultRoute = ApiEventsEventIdResultRouteImport.update({
+  id: '/result',
+  path: '/result',
+  getParentRoute: () => ApiEventsEventIdRoute,
+} as any)
 const ApiEventsEventIdAttendancesRoute =
   ApiEventsEventIdAttendancesRouteImport.update({
     id: '/attendances',
@@ -256,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/api/players': typeof ApiPlayersRouteWithChildren
+  '/player/mannschaft': typeof PlayerMannschaftRoute
   '/player/strafen-manager': typeof PlayerStrafenManagerRoute
   '/player/': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
@@ -269,10 +294,12 @@ export interface FileRoutesByFullPath {
   '/api/events/$eventId': typeof ApiEventsEventIdRouteWithChildren
   '/api/groups/$groupId': typeof ApiGroupsGroupIdRouteWithChildren
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
+  '/api/player/event-result': typeof ApiPlayerEventResultRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
   '/api/player/penalty': typeof ApiPlayerPenaltyRoute
+  '/api/player/team': typeof ApiPlayerTeamRoute
   '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
@@ -281,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/api/events/': typeof ApiEventsIndexRoute
   '/api/groups/': typeof ApiGroupsIndexRoute
   '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
+  '/api/events/$eventId/result': typeof ApiEventsEventIdResultRoute
   '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
   '/api/players/$playerId/groups/$groupId': typeof ApiPlayersPlayerIdGroupsGroupIdRoute
 }
@@ -293,6 +321,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/api/players': typeof ApiPlayersRouteWithChildren
+  '/player/mannschaft': typeof PlayerMannschaftRoute
   '/player/strafen-manager': typeof PlayerStrafenManagerRoute
   '/player': typeof PlayerIndexRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
@@ -306,10 +335,12 @@ export interface FileRoutesByTo {
   '/api/events/$eventId': typeof ApiEventsEventIdRouteWithChildren
   '/api/groups/$groupId': typeof ApiGroupsGroupIdRouteWithChildren
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
+  '/api/player/event-result': typeof ApiPlayerEventResultRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
   '/api/player/penalty': typeof ApiPlayerPenaltyRoute
+  '/api/player/team': typeof ApiPlayerTeamRoute
   '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
@@ -318,6 +349,7 @@ export interface FileRoutesByTo {
   '/api/events': typeof ApiEventsIndexRoute
   '/api/groups': typeof ApiGroupsIndexRoute
   '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
+  '/api/events/$eventId/result': typeof ApiEventsEventIdResultRoute
   '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
   '/api/players/$playerId/groups/$groupId': typeof ApiPlayersPlayerIdGroupsGroupIdRoute
 }
@@ -334,6 +366,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/statistics': typeof AuthenticatedStatisticsRoute
   '/api/players': typeof ApiPlayersRouteWithChildren
+  '/player/mannschaft': typeof PlayerMannschaftRoute
   '/player/strafen-manager': typeof PlayerStrafenManagerRoute
   '/player/': typeof PlayerIndexRoute
   '/_authenticated/events/$eventId': typeof AuthenticatedEventsEventIdRoute
@@ -347,10 +380,12 @@ export interface FileRoutesById {
   '/api/events/$eventId': typeof ApiEventsEventIdRouteWithChildren
   '/api/groups/$groupId': typeof ApiGroupsGroupIdRouteWithChildren
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
+  '/api/player/event-result': typeof ApiPlayerEventResultRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
   '/api/player/penalty': typeof ApiPlayerPenaltyRoute
+  '/api/player/team': typeof ApiPlayerTeamRoute
   '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
@@ -359,6 +394,7 @@ export interface FileRoutesById {
   '/api/events/': typeof ApiEventsIndexRoute
   '/api/groups/': typeof ApiGroupsIndexRoute
   '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
+  '/api/events/$eventId/result': typeof ApiEventsEventIdResultRoute
   '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
   '/api/players/$playerId/groups/$groupId': typeof ApiPlayersPlayerIdGroupsGroupIdRoute
 }
@@ -375,6 +411,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/statistics'
     | '/api/players'
+    | '/player/mannschaft'
     | '/player/strafen-manager'
     | '/player/'
     | '/events/$eventId'
@@ -388,10 +425,12 @@ export interface FileRouteTypes {
     | '/api/events/$eventId'
     | '/api/groups/$groupId'
     | '/api/player/attendance'
+    | '/api/player/event-result'
     | '/api/player/login'
     | '/api/player/overview'
     | '/api/player/penalties'
     | '/api/player/penalty'
+    | '/api/player/team'
     | '/api/players/$playerId'
     | '/api/stats/attendance'
     | '/api/stats/dashboard'
@@ -400,6 +439,7 @@ export interface FileRouteTypes {
     | '/api/events/'
     | '/api/groups/'
     | '/api/events/$eventId/attendances'
+    | '/api/events/$eventId/result'
     | '/api/groups/$groupId/players'
     | '/api/players/$playerId/groups/$groupId'
   fileRoutesByTo: FileRoutesByTo
@@ -412,6 +452,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/statistics'
     | '/api/players'
+    | '/player/mannschaft'
     | '/player/strafen-manager'
     | '/player'
     | '/events/$eventId'
@@ -425,10 +466,12 @@ export interface FileRouteTypes {
     | '/api/events/$eventId'
     | '/api/groups/$groupId'
     | '/api/player/attendance'
+    | '/api/player/event-result'
     | '/api/player/login'
     | '/api/player/overview'
     | '/api/player/penalties'
     | '/api/player/penalty'
+    | '/api/player/team'
     | '/api/players/$playerId'
     | '/api/stats/attendance'
     | '/api/stats/dashboard'
@@ -437,6 +480,7 @@ export interface FileRouteTypes {
     | '/api/events'
     | '/api/groups'
     | '/api/events/$eventId/attendances'
+    | '/api/events/$eventId/result'
     | '/api/groups/$groupId/players'
     | '/api/players/$playerId/groups/$groupId'
   id:
@@ -452,6 +496,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/statistics'
     | '/api/players'
+    | '/player/mannschaft'
     | '/player/strafen-manager'
     | '/player/'
     | '/_authenticated/events/$eventId'
@@ -465,10 +510,12 @@ export interface FileRouteTypes {
     | '/api/events/$eventId'
     | '/api/groups/$groupId'
     | '/api/player/attendance'
+    | '/api/player/event-result'
     | '/api/player/login'
     | '/api/player/overview'
     | '/api/player/penalties'
     | '/api/player/penalty'
+    | '/api/player/team'
     | '/api/players/$playerId'
     | '/api/stats/attendance'
     | '/api/stats/dashboard'
@@ -477,6 +524,7 @@ export interface FileRouteTypes {
     | '/api/events/'
     | '/api/groups/'
     | '/api/events/$eventId/attendances'
+    | '/api/events/$eventId/result'
     | '/api/groups/$groupId/players'
     | '/api/players/$playerId/groups/$groupId'
   fileRoutesById: FileRoutesById
@@ -488,6 +536,7 @@ export interface RootRouteChildren {
   DatenschutzRoute: typeof DatenschutzRoute
   ImpressumRoute: typeof ImpressumRoute
   ApiPlayersRoute: typeof ApiPlayersRouteWithChildren
+  PlayerMannschaftRoute: typeof PlayerMannschaftRoute
   PlayerStrafenManagerRoute: typeof PlayerStrafenManagerRoute
   PlayerIndexRoute: typeof PlayerIndexRoute
   ApiAttendancesAttendanceIdRoute: typeof ApiAttendancesAttendanceIdRoute
@@ -499,10 +548,12 @@ export interface RootRouteChildren {
   ApiEventsEventIdRoute: typeof ApiEventsEventIdRouteWithChildren
   ApiGroupsGroupIdRoute: typeof ApiGroupsGroupIdRouteWithChildren
   ApiPlayerAttendanceRoute: typeof ApiPlayerAttendanceRoute
+  ApiPlayerEventResultRoute: typeof ApiPlayerEventResultRoute
   ApiPlayerLoginRoute: typeof ApiPlayerLoginRoute
   ApiPlayerOverviewRoute: typeof ApiPlayerOverviewRoute
   ApiPlayerPenaltiesRoute: typeof ApiPlayerPenaltiesRoute
   ApiPlayerPenaltyRoute: typeof ApiPlayerPenaltyRoute
+  ApiPlayerTeamRoute: typeof ApiPlayerTeamRoute
   ApiStatsAttendanceRoute: typeof ApiStatsAttendanceRoute
   ApiStatsDashboardRoute: typeof ApiStatsDashboardRoute
   ApiEventsIndexRoute: typeof ApiEventsIndexRoute
@@ -558,6 +609,13 @@ declare module '@tanstack/react-router' {
       path: '/player/strafen-manager'
       fullPath: '/player/strafen-manager'
       preLoaderRoute: typeof PlayerStrafenManagerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/player/mannschaft': {
+      id: '/player/mannschaft'
+      path: '/player/mannschaft'
+      fullPath: '/player/mannschaft'
+      preLoaderRoute: typeof PlayerMannschaftRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/players': {
@@ -651,6 +709,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPlayersPlayerIdRouteImport
       parentRoute: typeof ApiPlayersRoute
     }
+    '/api/player/team': {
+      id: '/api/player/team'
+      path: '/api/player/team'
+      fullPath: '/api/player/team'
+      preLoaderRoute: typeof ApiPlayerTeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/player/penalty': {
       id: '/api/player/penalty'
       path: '/api/player/penalty'
@@ -677,6 +742,13 @@ declare module '@tanstack/react-router' {
       path: '/api/player/login'
       fullPath: '/api/player/login'
       preLoaderRoute: typeof ApiPlayerLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player/event-result': {
+      id: '/api/player/event-result'
+      path: '/api/player/event-result'
+      fullPath: '/api/player/event-result'
+      preLoaderRoute: typeof ApiPlayerEventResultRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/player/attendance': {
@@ -762,6 +834,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/groups/$groupId/players'
       preLoaderRoute: typeof ApiGroupsGroupIdPlayersRouteImport
       parentRoute: typeof ApiGroupsGroupIdRoute
+    }
+    '/api/events/$eventId/result': {
+      id: '/api/events/$eventId/result'
+      path: '/result'
+      fullPath: '/api/events/$eventId/result'
+      preLoaderRoute: typeof ApiEventsEventIdResultRouteImport
+      parentRoute: typeof ApiEventsEventIdRoute
     }
     '/api/events/$eventId/attendances': {
       id: '/api/events/$eventId/attendances'
@@ -850,10 +929,12 @@ const ApiPlayersRouteWithChildren = ApiPlayersRoute._addFileChildren(
 
 interface ApiEventsEventIdRouteChildren {
   ApiEventsEventIdAttendancesRoute: typeof ApiEventsEventIdAttendancesRoute
+  ApiEventsEventIdResultRoute: typeof ApiEventsEventIdResultRoute
 }
 
 const ApiEventsEventIdRouteChildren: ApiEventsEventIdRouteChildren = {
   ApiEventsEventIdAttendancesRoute: ApiEventsEventIdAttendancesRoute,
+  ApiEventsEventIdResultRoute: ApiEventsEventIdResultRoute,
 }
 
 const ApiEventsEventIdRouteWithChildren =
@@ -877,6 +958,7 @@ const rootRouteChildren: RootRouteChildren = {
   DatenschutzRoute: DatenschutzRoute,
   ImpressumRoute: ImpressumRoute,
   ApiPlayersRoute: ApiPlayersRouteWithChildren,
+  PlayerMannschaftRoute: PlayerMannschaftRoute,
   PlayerStrafenManagerRoute: PlayerStrafenManagerRoute,
   PlayerIndexRoute: PlayerIndexRoute,
   ApiAttendancesAttendanceIdRoute: ApiAttendancesAttendanceIdRoute,
@@ -888,10 +970,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiEventsEventIdRoute: ApiEventsEventIdRouteWithChildren,
   ApiGroupsGroupIdRoute: ApiGroupsGroupIdRouteWithChildren,
   ApiPlayerAttendanceRoute: ApiPlayerAttendanceRoute,
+  ApiPlayerEventResultRoute: ApiPlayerEventResultRoute,
   ApiPlayerLoginRoute: ApiPlayerLoginRoute,
   ApiPlayerOverviewRoute: ApiPlayerOverviewRoute,
   ApiPlayerPenaltiesRoute: ApiPlayerPenaltiesRoute,
   ApiPlayerPenaltyRoute: ApiPlayerPenaltyRoute,
+  ApiPlayerTeamRoute: ApiPlayerTeamRoute,
   ApiStatsAttendanceRoute: ApiStatsAttendanceRoute,
   ApiStatsDashboardRoute: ApiStatsDashboardRoute,
   ApiEventsIndexRoute: ApiEventsIndexRoute,

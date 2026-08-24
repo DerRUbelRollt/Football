@@ -30,13 +30,14 @@ function StatsPage() {
 
   // Per player aggregation (past events only)
   const now = Date.now();
-  const past = items.filter((a: any) => a.events && new Date(a.events.event_at).getTime() < now);
+  const past = items.filter((a) => a.events && new Date(a.events.event_at).getTime() < now);
 
   const byPlayer = new Map<number, { name: string; accepted: number; declined: number; pending: number; total: number }>();
-  past.forEach((a: any) => {
-    const key = a.players?.id;
-    if (!key) return;
-    const name = `${a.players.first_name} ${a.players.last_name[0]}.`;
+  past.forEach((a) => {
+    const player = a.players;
+    if (!player) return;
+    const key = player.id;
+    const name = `${player.first_name} ${player.last_name[0]}.`;
     const cur = byPlayer.get(key) ?? { name, accepted: 0, declined: 0, pending: 0, total: 0 };
     cur[a.status as "accepted" | "declined" | "pending"]++;
     cur.total++;

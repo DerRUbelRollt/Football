@@ -53,7 +53,7 @@ function EventsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "upcoming" | "past")}>
           <TabsList>
             <TabsTrigger value="upcoming">Kommend</TabsTrigger>
             <TabsTrigger value="past">Vergangen</TabsTrigger>
@@ -79,7 +79,7 @@ function EventsPage() {
               <div className="min-w-0 flex-1">
                 <div className="font-semibold truncate">{e.title}{e.opponent ? `` : ""}</div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {(e.groups as any)?.name} · {format(new Date(e.event_at), "EEE d. MMM yyyy · HH:mm", { locale: de })}
+                  {e.groups?.name} · {format(new Date(e.event_at), "EEE d. MMM yyyy · HH:mm", { locale: de })}
                   {e.location ? ` · ${e.location}` : ""}
                 </div>
               </div>
@@ -183,7 +183,7 @@ function CreateEventDialog({ onCreated }: { onCreated: () => void }) {
               </div>
               <div className="space-y-2">
                 <Label>Heim / Auswärts</Label>
-                <Select value={homeAway} onValueChange={(v) => setHomeAway(v as any)}>
+                <Select value={homeAway} onValueChange={(v) => setHomeAway(v as "home" | "away")}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="home">Heim</SelectItem>

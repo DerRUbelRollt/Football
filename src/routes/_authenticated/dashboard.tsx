@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { ComponentProps } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api-client";
+import { api, type EventListItem } from "@/lib/api-client";
 import { motion } from "framer-motion";
-import { Users, CalendarDays, Trophy, Activity, ArrowRight, Plus } from "lucide-react";
+import { Users, CalendarDays, Trophy, Activity, ArrowRight, Plus, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -68,7 +69,7 @@ function Dashboard() {
             <EmptyState title="Noch keine Ereignisse" hint="Erstelle dein erstes Training oder Spiel." />
           ) : (
             <ul className="space-y-2">
-              {q.data?.upcoming.map((e: any) => (
+              {q.data?.upcoming.map((e: EventListItem) => (
                 <li key={e.id}>
                   <Link
                     to="/events/$eventId"
@@ -102,7 +103,7 @@ function Dashboard() {
   );
 }
 
-function QuickLink({ to, label, icon: Icon }: { to: any; label: string; icon: any }) {
+function QuickLink({ to, label, icon: Icon }: { to: ComponentProps<typeof Link>["to"]; label: string; icon: LucideIcon }) {
   return (
     <Link to={to} className="flex items-center gap-3 p-3 rounded-lg bg-secondary hover:bg-accent transition group">
       <Icon className="h-4 w-4 text-primary" />

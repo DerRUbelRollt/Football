@@ -96,6 +96,8 @@ public class EventsController : ControllerBase
             title = e.Title,
             opponent = e.Opponent,
             home_away = e.HomeAway,
+            home_score = e.HomeScore,
+            away_score = e.AwayScore,
             location = e.Location,
             meeting_point = e.MeetingPoint,
             event_at = e.EventAt,
@@ -114,6 +116,20 @@ public class EventsController : ControllerBase
         _ctx.Events.Remove(e);
         await _ctx.SaveChangesAsync();
         return Ok(new { ok = true });
+    }
+
+    [HttpPatch("{id:int}/result")]
+    public async Task<IActionResult> SetResult(int id, [FromBody] SetResultRequest req)
+    {
+        if (TrainerAuth.FromRequest(Request) == null) return Unauthorized(new { error = "Unauthorized" });
+        var e = await _ctx.Events.FirstOrDefaultAsync(ev => ev.Id == id);
+        if (e == null) return NotFound(new { error = "Ereignis nicht gefunden" });
+        if (e.EventType != "game") return BadRequest(new { error = "Ergebnis nur bei Spielen möglich" });
+
+        e.HomeScore = req.HomeScore;
+        e.AwayScore = req.AwayScore;
+        await _ctx.SaveChangesAsync();
+        return Ok(new { ok = true, home_score = e.HomeScore, away_score = e.AwayScore });
     }
 
     [HttpGet("{id:int}/attendances")]
@@ -151,3 +167,5 @@ public record CreateEventRequest(
     DateTime EventAt,
     string? Description,
     int GroupId);
+
+public record SetResultRequest(int? HomeScore, int? AwayScore);
