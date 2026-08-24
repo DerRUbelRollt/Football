@@ -200,11 +200,12 @@ function MannschaftView() {
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
                     <th className="py-2 pr-3">Spieler</th>
-                    <th className="py-2 px-3">Trainings/Spiele</th>
+                    <th className="py-2 px-3">Quote</th>
+                    <th className="py-2 px-3">Trainings</th>
                     <th className="py-2 px-3">Teilgenommen</th>
                     <th className="py-2 px-3">Abgesagt</th>
                     <th className="py-2 px-3">Offen</th>
-                    <th className="py-2 px-3">Quote</th>
+                    
                   </tr>
                 </thead>
                 <tbody>
@@ -216,6 +217,7 @@ function MannschaftView() {
                       <td className="py-2 px-3 text-primary">{p.accepted}</td>
                       <td className="py-2 px-3 text-destructive">{p.declined}</td>
                       <td className="py-2 px-3 text-muted-foreground">{p.pending}</td>
+                      
                     </tr>
                   ))}
                 </tbody>

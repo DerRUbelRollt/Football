@@ -144,7 +144,9 @@ public class PlayerController : ControllerBase
         var now = DateTime.UtcNow;
 
         var attendanceRaw = await _ctx.Attendances
-            .Where(a => groupIds.Contains(a.Event!.GroupId) && a.Event!.EventAt < now)
+            // Nur Trainings zaehlen - die Anwesenheits-Uebersicht der Mannschaft soll sich
+            // ausschliesslich auf Trainingsbeteiligung beziehen, nicht auf Spiele.
+            .Where(a => groupIds.Contains(a.Event!.GroupId) && a.Event!.EventAt < now && a.Event!.EventType == "training")
             .GroupBy(a => new { a.PlayerId, First = a.Player!.FirstName, Last = a.Player.LastName })
             .Select(g => new
             {
