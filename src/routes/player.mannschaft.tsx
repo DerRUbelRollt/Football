@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, type PlayerTeamGameRow } from "@/lib/api-client";
+import { api, ApiError, PlayerTeamPenaltyRow, type PlayerTeamGameRow } from "@/lib/api-client";
 import { getPlayerCode } from "@/lib/player-session";
 import { formatPenaltyBalance } from "@/lib/penalty-format";
 import { Button } from "@/components/ui/button";
@@ -176,7 +176,7 @@ function MannschaftView() {
                     <div className="flex items-center justify-between gap-3">
                       {kind !== "none" ? (
                         <span className={`text-xs px-2 py-1 rounded-full font-semibold ${KIND_BADGE_CLASS[kind]}`}>
-                          {g.home_score}:{g.away_score}
+                          {formatScore(g.home_score, g.away_score)}
                         </span>
                       ) : <span />}
                       <GameResultDialog game={g} code={code!} onSaved={() => qc.invalidateQueries({ queryKey: ["player-team", code] })} />
@@ -211,11 +211,11 @@ function MannschaftView() {
                   {attendanceTable.map((p) => (
                     <tr key={p.player_id} className="border-b border-border/50 last:border-0">
                       <td className="py-2 pr-3 font-medium">{p.first_name} {p.last_name}</td>
+                      <td className="py-2 px-3 font-bold">{p.quote}%</td>
                       <td className="py-2 px-3">{p.total}</td>
                       <td className="py-2 px-3 text-primary">{p.accepted}</td>
                       <td className="py-2 px-3 text-destructive">{p.declined}</td>
                       <td className="py-2 px-3 text-muted-foreground">{p.pending}</td>
-                      <td className="py-2 px-3 font-bold">{p.quote}%</td>
                     </tr>
                   ))}
                 </tbody>
@@ -227,8 +227,8 @@ function MannschaftView() {
         <section>
           <h2 className="font-bold text-lg mb-3">Bierkasten-Rangliste</h2>
           <div className="card-elevated divide-y divide-border">
-            {penalties.map((p, i) => {
-              const { moneyText, crateText, hasDebt } = formatPenaltyBalance(p.player_penalty, p.beer_crates);
+            {formatFilterBeerCrates(penalties).map((p, i) => {
+              const { moneyText, crateText, hasDebt } = formatPenaltyBalance(0, p.beer_crates);
               return (
                 <div key={p.id} className="flex items-center gap-3 p-4">
                   <div className="w-5 text-center text-xs text-muted-foreground font-semibold shrink-0">{i + 1}</div>
@@ -237,7 +237,7 @@ function MannschaftView() {
                   </div>
                   <div className="min-w-0 flex-1 font-medium truncate">{p.first_name} {p.last_name}</div>
                   <div className={`text-xs font-mono shrink-0 ${hasDebt ? "text-destructive" : "text-muted-foreground"}`}>
-                    {moneyText} | {crateText}
+                     {crateText}
                   </div>
                 </div>
               );
@@ -247,6 +247,17 @@ function MannschaftView() {
       </main>
     </div>
   );
+}
+
+function formatScore(home: number | null, away: number | null): string {
+  if (home == null || away == null) return "-";
+  return `${home}:${away}`;
+}
+
+function formatFilterBeerCrates(penalties: PlayerTeamPenaltyRow[]): PlayerTeamPenaltyRow[] {
+  const penaltyFilteredByBeerCrates = [...penalties];
+  penaltyFilteredByBeerCrates.sort((a, b) => b.beer_crates - a.beer_crates);
+  return penaltyFilteredByBeerCrates;
 }
 
 function LiveBadge({ eventAt }: { eventAt: string }) {
