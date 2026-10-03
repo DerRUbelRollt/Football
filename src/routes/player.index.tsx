@@ -145,7 +145,7 @@ function PlayerHome() {
               {upcoming.map((e, i) => {
                 const status = e.attendances[0]?.status ?? "pending";
                 const deadline = new Date(e.event_at);
-                deadline.setHours(16, 0, 0, 0);
+                deadline.setHours(13, 0, 0, 0);
                 const isDeadlinePassed = e.event_type === "training" && Date.now() >= deadline.getTime();
                 return (
                   <motion.div
