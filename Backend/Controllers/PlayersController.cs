@@ -38,6 +38,23 @@ public class PlayersController : ControllerBase
         if (exists) return Conflict(new { error = "Spieler ist dieser Mannschaft bereits zugeordnet" });
 
         _ctx.PlayerGroupMemberships.Add(new PlayerGroupMembership { PlayerId = id, GroupId = req.GroupId });
+
+        // Für bereits angelegte kommende Ereignisse der Mannschaft offene Anwesenheiten nachtragen,
+        // damit der Spieler dort in der Teilnehmerliste auftaucht.
+        var now = DateTime.UtcNow;
+        var upcomingEventIds = await _ctx.Events
+            .Where(e => e.GroupId == req.GroupId && e.EventAt >= now)
+            .Select(e => e.Id)
+            .ToListAsync();
+        var alreadyInvited = await _ctx.Attendances
+            .Where(a => a.PlayerId == id && upcomingEventIds.Contains(a.EventId))
+            .Select(a => a.EventId)
+            .ToListAsync();
+        foreach (var eventId in upcomingEventIds.Except(alreadyInvited))
+        {
+            _ctx.Attendances.Add(new Attendance { EventId = eventId, PlayerId = id, Status = "pending", UpdatedAt = now });
+        }
+
         await _ctx.SaveChangesAsync();
         return Ok(new { ok = true });
     }
@@ -58,6 +75,14 @@ public class PlayersController : ControllerBase
         else
         {
             _ctx.PlayerGroupMemberships.Remove(membership);
+
+            // Spieler aus kommenden Ereignissen dieser Mannschaft austragen (egal ob zu-/abgesagt oder offen).
+            // Vergangene Ereignisse bleiben für die Statistik erhalten.
+            var now = DateTime.UtcNow;
+            var upcomingAttendances = await _ctx.Attendances
+                .Where(a => a.PlayerId == id && a.Event!.GroupId == groupId && a.Event.EventAt >= now)
+                .ToListAsync();
+            _ctx.Attendances.RemoveRange(upcomingAttendances);
         }
 
         await _ctx.SaveChangesAsync();
