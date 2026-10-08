@@ -1,14 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Activity, Trophy, MapPin, Users, Trash2, Search, Check, X, Clock, Goal } from "lucide-react";
+import { ArrowLeft, Activity, Trophy, MapPin, Users, Trash2, Search, Check, X, Clock, Goal, FileDown } from "lucide-react";
 import type { EventDetail } from "@/lib/api-client";
+import type { KitColors } from "@/lib/event-pdf";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -84,18 +86,21 @@ function EventDetail() {
                 {e.description && <p className="text-sm mt-3">{e.description}</p>}
               </div>
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="icon"><Trash2 className="h-4 w-4" /></Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader><AlertDialogTitle>Ereignis löschen?</AlertDialogTitle></AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => del.mutate()}>Löschen</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <div className="flex items-center gap-2">
+              {e.event_type === "game" && <PdfDialog event={e} />}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="icon"><Trash2 className="h-4 w-4" /></Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader><AlertDialogTitle>Ereignis löschen?</AlertDialogTitle></AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => del.mutate()}>Löschen</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
         </div>
       )}
@@ -214,6 +219,75 @@ function ResultDialog({ event, onSaved }: { event: EventDetail; onSaved: () => v
           </div>
         </div>
         <Button className="w-full" disabled={m.isPending} onClick={() => m.mutate()}>Speichern</Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const KIT_STORAGE_KEY = "event-pdf-kit";
+const KIT_FIELDS: [keyof KitColors, string, string][] = [
+  ["shirt", "Trikot", "z. B. Gelb"],
+  ["shorts", "Hose", "z. B. Schwarz"],
+  ["socks", "Stutzen", "z. B. Gelb"],
+];
+
+function PdfDialog({ event }: { event: EventDetail }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [kit, setKit] = useState<KitColors>({ shirt: "", shorts: "", socks: "" });
+
+  const onOpenChange = (next: boolean) => {
+    // Zuletzt verwendete Trikotfarben vorschlagen – reiner Komfort, darf fehlen.
+    if (next) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(KIT_STORAGE_KEY) ?? "null");
+        if (saved) setKit({ shirt: saved.shirt ?? "", shorts: saved.shorts ?? "", socks: saved.socks ?? "" });
+      } catch { /* ignorieren */ }
+    }
+    setOpen(next);
+  };
+
+  const create = async (ev: FormEvent) => {
+    ev.preventDefault();
+    setBusy(true);
+    try {
+      const cleaned = { shirt: kit.shirt.trim(), shorts: kit.shorts.trim(), socks: kit.socks.trim() };
+      try { localStorage.setItem(KIT_STORAGE_KEY, JSON.stringify(cleaned)); } catch { /* ignorieren */ }
+      // Zusagen frisch laden, damit die PDF den aktuellen Stand enthält.
+      const rows = await api.events.attendances(event.id);
+      const players = rows.filter((a) => a.status === "accepted" && a.players).map((a) => a.players!);
+      const { downloadEventPdf } = await import("@/lib/event-pdf");
+      await downloadEventPdf(event, players, cleaned);
+      setOpen(false);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>
+        <Button variant="outline"><FileDown className="h-4 w-4 mr-1" /> PDF</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>PDF erstellen</DialogTitle>
+          <DialogDescription>Welche Trikots werden getragen?</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={create} className="space-y-4">
+          {KIT_FIELDS.map(([key, label, placeholder]) => (
+            <div key={key} className="space-y-1.5">
+              <Label htmlFor={`kit-${key}`}>{label}</Label>
+              <Input id={`kit-${key}`} value={kit[key]} placeholder={placeholder} maxLength={40}
+                onChange={(ev) => setKit((k) => ({ ...k, [key]: ev.target.value }))} />
+            </div>
+          ))}
+          <Button type="submit" className="w-full" disabled={busy}>
+            <FileDown className="h-4 w-4 mr-1" /> {busy ? "Wird erstellt…" : "PDF erstellen"}
+          </Button>
+        </form>
       </DialogContent>
     </Dialog>
   );
