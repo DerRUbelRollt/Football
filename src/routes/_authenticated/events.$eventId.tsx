@@ -239,10 +239,10 @@ function StatusPill({ status, onChange }: { status: string; onChange: (s: "accep
   return (
     <div className="flex gap-1">
       <button className={btn(status === "accepted", "ok")} onClick={() => onChange("accepted")}>
-        <Check className="h-3.5 w-3.5" /> Anwesend
+        <Check className="h-3.5 w-3.5" /> 
       </button>
       <button className={btn(status === "declined", "no")} onClick={() => onChange("declined")}>
-        <X className="h-3.5 w-3.5" /> Fehlt
+        <X className="h-3.5 w-3.5" />
       </button>
       <button className={btn(status === "pending", "n")} onClick={() => onChange("pending")} title="Offen">
         <Clock className="h-3.5 w-3.5" />
