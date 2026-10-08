@@ -62,7 +62,7 @@ function StatsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-black tracking-tight">Statistik</h1>
-        <p className="text-muted-foreground mt-1">Anwesenheit auf einen Blick.</p>
+        <p className="text-muted-foreground mt-1">Trainingsbeteiligung auf einen Blick.</p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
@@ -102,7 +102,7 @@ function StatsPage() {
             <thead>
               <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
                 <th className="py-2 pr-3">Spieler</th>
-                <th className="py-2 px-3">Trainings/Spiele</th>
+                <th className="py-2 px-3">Trainings</th>
                 <th className="py-2 px-3">Teilgenommen</th>
                 <th className="py-2 px-3">Abgesagt</th>
                 <th className="py-2 px-3">Offen</th>

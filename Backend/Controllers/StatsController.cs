@@ -36,8 +36,9 @@ public class StatsController : ControllerBase
             })
             .ToListAsync();
 
-        var total = await _ctx.Attendances.CountAsync();
-        var accepted = await _ctx.Attendances.CountAsync(a => a.Status == "accepted");
+        var trainingAttendances = _ctx.Attendances.Where(a => a.Event!.EventType == "training");
+        var total = await trainingAttendances.CountAsync();
+        var accepted = await trainingAttendances.CountAsync(a => a.Status == "accepted");
         var rate = total > 0 ? (int)Math.Round(accepted * 100.0 / total) : 0;
 
         return Ok(new { groups, players, upcoming, rate });
@@ -48,9 +49,11 @@ public class StatsController : ControllerBase
     {
         if (TrainerAuth.FromRequest(Request) == null) return Unauthorized(new { error = "Unauthorized" });
 
+        // Nur Trainings zaehlen - Spiele sollen nicht in die Anwesenheitsstatistik einfliessen.
         var rows = await _ctx.Attendances
             .Include(a => a.Player)
             .Include(a => a.Event)
+            .Where(a => a.Event!.EventType == "training")
             .Select(a => new
             {
                 status = a.Status,
