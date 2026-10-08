@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Activity, Trophy, MapPin, Users, Trash2, Search, Check, X, Clock, Goal, FileDown } from "lucide-react";
 import type { EventDetail } from "@/lib/api-client";
 import type { KitColors } from "@/lib/event-pdf";
+import { EventFormDialog } from "@/components/event-form-dialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -88,6 +89,11 @@ function EventDetail() {
             </div>
             <div className="flex items-center gap-2">
               {e.event_type === "game" && <PdfDialog event={e} />}
+              <EventFormDialog mode="edit" event={e} onSaved={() => {
+                qc.invalidateQueries({ queryKey: ["event", eventId] });
+                qc.invalidateQueries({ queryKey: ["event-att", eventId] });
+                qc.invalidateQueries({ queryKey: ["events"] });
+              }} />
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" size="icon"><Trash2 className="h-4 w-4" /></Button>

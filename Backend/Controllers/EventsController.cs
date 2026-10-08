@@ -107,6 +107,50 @@ public class EventsController : ControllerBase
         });
     }
 
+    [HttpPatch("{id:int}")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateEventRequest req)
+    {
+        if (TrainerAuth.FromRequest(Request) == null) return Unauthorized(new { error = "Unauthorized" });
+        var e = await _ctx.Events.FirstOrDefaultAsync(ev => ev.Id == id);
+        if (e == null) return NotFound(new { error = "Ereignis nicht gefunden" });
+        if (string.IsNullOrWhiteSpace(req.Title)) return BadRequest(new { error = "Titel ist erforderlich" });
+
+        // Der Ereignistyp (Training/Spiel) ist nach dem Erstellen fest.
+        var isGame = e.EventType == "game";
+        e.Title = req.Title.Trim();
+        e.Opponent = isGame && !string.IsNullOrWhiteSpace(req.Opponent) ? req.Opponent.Trim() : null;
+        e.HomeAway = isGame && !string.IsNullOrWhiteSpace(req.HomeAway) ? req.HomeAway : null;
+        e.Location = string.IsNullOrWhiteSpace(req.Location) ? null : req.Location.Trim();
+        e.MeetingPoint = string.IsNullOrWhiteSpace(req.MeetingPoint) ? null : req.MeetingPoint.Trim();
+        e.EventAt = req.EventAt.ToUniversalTime();
+        e.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
+
+        if (req.GroupId != e.GroupId)
+        {
+            if (!await _ctx.Groups.AnyAsync(g => g.Id == req.GroupId)) return NotFound(new { error = "Mannschaft nicht gefunden" });
+
+            // Teilnehmerliste an die neue Mannschaft anpassen: Nicht-Mitglieder entfernen,
+            // fehlende Mitglieder offen eintragen. Rückmeldungen von Spielern in beiden Mannschaften bleiben.
+            var memberIds = await _ctx.PlayerGroupMemberships
+                .Where(m => m.GroupId == req.GroupId)
+                .Select(m => m.PlayerId)
+                .ToListAsync();
+            var attendances = await _ctx.Attendances.Where(a => a.EventId == id).ToListAsync();
+            _ctx.Attendances.RemoveRange(attendances.Where(a => !memberIds.Contains(a.PlayerId)));
+
+            var now = DateTime.UtcNow;
+            var invited = attendances.Select(a => a.PlayerId).ToHashSet();
+            foreach (var playerId in memberIds.Where(p => !invited.Contains(p)))
+            {
+                _ctx.Attendances.Add(new Attendance { EventId = id, PlayerId = playerId, Status = "pending", UpdatedAt = now });
+            }
+            e.GroupId = req.GroupId;
+        }
+
+        await _ctx.SaveChangesAsync();
+        return Ok(new { ok = true });
+    }
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -159,6 +203,16 @@ public class EventsController : ControllerBase
 
 public record CreateEventRequest(
     string EventType,
+    string Title,
+    string? Opponent,
+    string? HomeAway,
+    string? Location,
+    string? MeetingPoint,
+    DateTime EventAt,
+    string? Description,
+    int GroupId);
+
+public record UpdateEventRequest(
     string Title,
     string? Opponent,
     string? HomeAway,

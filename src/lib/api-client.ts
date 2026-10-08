@@ -190,6 +190,8 @@ export interface NewEvent {
   groupId: number;
 }
 
+export type EventUpdate = Omit<NewEvent, "eventType">;
+
 export interface EventAttendanceRow {
   id: number;
   status: AttendanceStatus;
@@ -303,6 +305,8 @@ export const api = {
     create: (rows: NewEvent[]) =>
       apiFetch<{ count: number }>("/api/events", { method: "POST", body: rows }),
     get: (eventId: string | number) => apiFetch<EventDetail>(`/api/events/${eventId}`),
+    update: (eventId: string | number, body: EventUpdate) =>
+      apiFetch<{ ok: true }>(`/api/events/${eventId}`, { method: "PATCH", body }),
     remove: (eventId: string | number) =>
       apiFetch<{ ok: true }>(`/api/events/${eventId}`, { method: "DELETE" }),
     attendances: (eventId: string | number) =>
