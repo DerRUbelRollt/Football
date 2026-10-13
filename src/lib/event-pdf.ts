@@ -373,7 +373,11 @@ export async function downloadEventPdf(event: EventDetail, players: PdfPlayer[],
   if (event.event_type === "game") info.push(["Gegner", event.opponent ?? "-"]);
   info.push(["Mannschaft", event.groups?.name ?? "-"]);
   info.push(["Ort", event.location ?? "-"]);
-  if (event.meeting_point) info.push(["Treffpunkt", event.meeting_point]);
+  if (event.meeting_point) {
+    // Neue Ereignisse speichern den Treffpunkt als Uhrzeit, ältere noch als Freitext.
+    const isTime = /^\d{2}:\d{2}$/.test(event.meeting_point);
+    info.push(["Treffpunkt", isTime ? `${event.meeting_point} Uhr` : event.meeting_point]);
+  }
 
   let y = 70;
   drawSectionTitle(doc, "Informationen", y);

@@ -10,11 +10,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, isValid, parse, subMinutes } from "date-fns";
 
 type Props =
   | { mode: "create"; onSaved: () => void }
   | { mode: "edit"; event: EventDetail; onSaved: () => void };
+
+// Ort, der bei Heimspielen automatisch eingetragen wird.
+const HOME_LOCATION = "Neunkircher Str. 7A, 66333 Völklingen";
+
+const DEFAULT_TIME = "18:00";
+
+// Bei Spielen ist der Treffpunkt eine Uhrzeit und liegt automatisch 1 Stunde 15 Minuten
+// vor Spielbeginn. Bei Trainings bleibt er ein freies Textfeld.
+const MEETING_OFFSET_MINUTES = 75;
+
+const meetingTimeFor = (time: string) => {
+  const t = parse(time, "HH:mm", new Date());
+  return isValid(t) ? format(subMinutes(t, MEETING_OFFSET_MINUTES), "HH:mm") : "";
+};
 
 // Dialog zum Erstellen und Bearbeiten von Ereignissen. Beim Bearbeiten ist der Typ fest
 // und die wöchentliche Wiederholung entfällt.
@@ -27,7 +41,7 @@ export function EventFormDialog(props: Props) {
   const [opponent, setOpponent] = useState("");
   const [homeAway, setHomeAway] = useState<"home" | "away">("home");
   const [date, setDate] = useState("");
-  const [time, setTime] = useState("18:00");
+  const [time, setTime] = useState(DEFAULT_TIME);
   const [location, setLocation] = useState("");
   const [meeting, setMeeting] = useState("");
   const [desc, setDesc] = useState("");
@@ -58,6 +72,27 @@ export function EventFormDialog(props: Props) {
       setDesc(e.description ?? "");
     }
     setOpen(next);
+  };
+
+  // Bei Heimspielen den Heimplatz als Ort eintragen. Beim Wechsel weg davon nur den
+  // automatisch gesetzten Ort wieder leeren, damit eigene Eingaben erhalten bleiben.
+  const applyHomeLocation = (isHomeGame: boolean) =>
+    setLocation((cur) => (isHomeGame ? HOME_LOCATION : cur === HOME_LOCATION ? "" : cur));
+
+  const selectType = (t: "training" | "game") => {
+    setType(t);
+    applyHomeLocation(t === "game" && homeAway === "home");
+    setMeeting(t === "game" ? meetingTimeFor(time) : "");
+  };
+
+  const selectHomeAway = (v: "home" | "away") => {
+    setHomeAway(v);
+    applyHomeLocation(type === "game" && v === "home");
+  };
+
+  const changeTime = (t: string) => {
+    setTime(t);
+    if (type === "game") setMeeting(meetingTimeFor(t));
   };
 
   const m = useMutation({
@@ -92,7 +127,9 @@ export function EventFormDialog(props: Props) {
         toast.success("Ereignis gespeichert");
       } else {
         toast.success(n && n > 1 ? `${n} Trainings erstellt` : "Ereignis erstellt");
-        setTitle(""); setOpponent(""); setDate(""); setLocation(""); setMeeting(""); setDesc("");
+        setTitle(""); setOpponent(""); setDate(""); setDesc("");
+        setMeeting(type === "game" ? meetingTimeFor(time) : "");
+        setLocation(type === "game" && homeAway === "home" ? HOME_LOCATION : "");
         setRecurring(false); setWeeks(4);
       }
       setOpen(false);
@@ -115,7 +152,7 @@ export function EventFormDialog(props: Props) {
         <form onSubmit={(e) => { e.preventDefault(); m.mutate(); }} className="space-y-4">
           <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
             {(["training", "game"] as const).map((t) => (
-              <button type="button" key={t} onClick={() => setType(t)} disabled={isEdit}
+              <button type="button" key={t} onClick={() => selectType(t)} disabled={isEdit}
                 title={isEdit ? "Der Typ kann nachträglich nicht geändert werden" : undefined}
                 className={`h-10 rounded-lg text-sm font-semibold transition disabled:cursor-not-allowed ${type === t ? "bg-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:hover:text-muted-foreground"}`}>
                 {t === "training" ? "Training" : "Spiel"}
@@ -144,7 +181,7 @@ export function EventFormDialog(props: Props) {
               </div>
               <div className="space-y-2">
                 <Label>Heim / Auswärts</Label>
-                <Select value={homeAway} onValueChange={(v) => setHomeAway(v as "home" | "away")}>
+                <Select value={homeAway} onValueChange={(v) => selectHomeAway(v as "home" | "away")}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="home">Heim</SelectItem>
@@ -161,7 +198,7 @@ export function EventFormDialog(props: Props) {
             </div>
             <div className="space-y-2">
               <Label>Uhrzeit</Label>
-              <Input type="time" required value={time} onChange={(e) => setTime(e.target.value)} />
+              <Input type="time" required value={time} onChange={(e) => changeTime(e.target.value)} />
             </div>
           </div>
           {!isEdit && type === "training" && (
@@ -194,7 +231,7 @@ export function EventFormDialog(props: Props) {
             </div>
             <div className="space-y-2">
               <Label>Treffpunkt</Label>
-              <Input value={meeting} onChange={(e) => setMeeting(e.target.value)} placeholder="Vereinsheim" />
+              <Input type={type === "game" ? "time" : "text"} value={meeting} onChange={(e) => setMeeting(e.target.value)} placeholder="Vereinsheim" />
             </div>
           </div>
           <div className="space-y-2">
