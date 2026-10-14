@@ -96,15 +96,26 @@ export interface PlayerPenaltyRow {
 
 export type AttendanceStatus = "accepted" | "declined" | "pending";
 
+export type EventType = "training" | "game" | "event";
+
+export type Meal = "vegan" | "vegetarian" | "meat";
+
+export interface EventGuest {
+  name: string;
+  meal: Meal | null;
+}
+
 export interface PlayerEventAttendance {
   id?: number;
   status: AttendanceStatus;
   player_id: number;
+  meal?: Meal | null;
+  guests?: EventGuest[];
 }
 
 export interface PlayerHistoryEvent {
   id: number;
-  event_type: "training" | "game";
+  event_type: EventType;
   title: string;
   event_at: string;
   attendances: PlayerEventAttendance[];
@@ -116,6 +127,8 @@ export interface PlayerUpcomingEvent extends PlayerHistoryEvent {
   location: string | null;
   meeting_point: string | null;
   description: string | null;
+  max_guests: number;
+  with_food: boolean;
 }
 
 export interface PlayerOverview {
@@ -161,7 +174,7 @@ export interface DuplicatePlayerRow {
 
 export interface EventListItem {
   id: number;
-  event_type: "training" | "game";
+  event_type: EventType;
   title: string;
   opponent: string | null;
   home_away: "home" | "away" | null;
@@ -176,10 +189,12 @@ export interface EventDetail extends EventListItem {
   group_id: number;
   home_score: number | null;
   away_score: number | null;
+  max_guests: number;
+  with_food: boolean;
 }
 
 export interface NewEvent {
-  eventType: "training" | "game";
+  eventType: EventType;
   title: string;
   opponent: string | null;
   homeAway: "home" | "away" | null;
@@ -188,6 +203,8 @@ export interface NewEvent {
   eventAt: string;
   description: string | null;
   groupId: number;
+  maxGuests: number | null;
+  withFood: boolean | null;
 }
 
 export type EventUpdate = Omit<NewEvent, "eventType">;
@@ -195,6 +212,8 @@ export type EventUpdate = Omit<NewEvent, "eventType">;
 export interface EventAttendanceRow {
   id: number;
   status: AttendanceStatus;
+  meal: Meal | null;
+  guests: EventGuest[];
   players: {
     id: number;
     first_name: string;
@@ -269,7 +288,7 @@ export const api = {
       apiFetch<{ player: PlayerSummary }>("/api/player/login", { method: "POST", body }),
     overview: (body: { code: string }) =>
       apiFetch<PlayerOverview>("/api/player/overview", { method: "POST", body }),
-    setAttendance: (body: { code: string; eventId: number; status: AttendanceStatus }) =>
+    setAttendance: (body: { code: string; eventId: number; status: AttendanceStatus; meal?: Meal | null; guests?: EventGuest[] }) =>
       apiFetch<{ ok: true }>("/api/player/attendance", { method: "POST", body }),
     penalty: (body: { managerCode: string; code: string; amount: number; crateAmount?: number }) =>
       apiFetch<{ ok: true; player_id: number; player_penalty: number; beer_crates: number }>("/api/player/penalty", { method: "PATCH", body }),

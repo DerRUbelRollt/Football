@@ -1,12 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, type EventGuest, type Meal, type PlayerUpcomingEvent } from "@/lib/api-client";
 import { getPlayerCode, clearPlayerCode } from "@/lib/player-session";
 import { formatPenaltyBalance } from "@/lib/penalty-format";
+import { eventTypeLabel } from "@/lib/event-type";
+import { MEAL_META } from "@/lib/meal";
+import { EventTypeIcon } from "@/components/event-type-icon";
+import { ParticipationSheet } from "@/components/participation-sheet";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Trophy, Activity, MapPin, Clock, Check, X, LogOut, Calendar, Wallet, Users, type LucideIcon } from "lucide-react";
+import { Trophy, Activity, MapPin, Clock, Check, X, LogOut, Calendar, Wallet, Users, Pencil, Utensils, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { toast } from "sonner";
@@ -20,6 +24,11 @@ function PlayerHome() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [code, setCode] = useState<string | null>(null);
+  // Event, für das gerade das Zusage-Sheet offen ist. "n" erzwingt bei jedem Öffnen frische
+  // Vorbelegung; das Sheet bleibt beim Schließen kurz gemountet, damit es animiert zugeht.
+  const [sheet, setSheet] = useState<{ event: PlayerUpcomingEvent; open: boolean; n: number } | null>(null);
+  const openSheet = (event: PlayerUpcomingEvent) => setSheet((s) => ({ event, open: true, n: (s?.n ?? 0) + 1 }));
+  const closeSheet = () => setSheet((s) => s && { ...s, open: false });
 
   useEffect(() => {
     const c = getPlayerCode();
@@ -34,8 +43,8 @@ function PlayerHome() {
   });
 
   const m = useMutation({
-    mutationFn: (vars: { eventId: number; status: "accepted" | "declined" }) =>
-      api.player.setAttendance({ code: code!, eventId: vars.eventId, status: vars.status }),
+    mutationFn: (vars: { eventId: number; status: "accepted" | "declined"; meal?: Meal | null; guests?: EventGuest[] }) =>
+      api.player.setAttendance({ code: code!, eventId: vars.eventId, status: vars.status, meal: vars.meal, guests: vars.guests }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["player-overview"] }),
     onError: (e) => toast.error(e instanceof ApiError ? e.message : (e as Error).message),
   });
@@ -66,7 +75,8 @@ function PlayerHome() {
 
   const { player, upcoming, history } = q.data!;
   const { moneyText, crateText, hasDebt } = formatPenaltyBalance(player.player_penalty, player.beer_crates);
-  const all = [...upcoming, ...history];
+  // Events (Vereinsfeiern) zählen nicht zur Anwesenheitsquote.
+  const all = [...upcoming, ...history].filter((e) => e.event_type !== "event");
   const accepted = all.filter((e) => e.attendances?.[0]?.status === "accepted").length;
   const decided = all.filter((e) => {
     const s = e.attendances?.[0]?.status;
@@ -143,7 +153,17 @@ function PlayerHome() {
           ) : (
             <div className="space-y-3">
               {upcoming.map((e, i) => {
-                const status = e.attendances[0]?.status ?? "pending";
+                const att = e.attendances[0];
+                const status = att?.status ?? "pending";
+                const accepted = status === "accepted";
+                const guests = accepted ? att?.guests ?? [] : [];
+                const meal = accepted && e.with_food ? att?.meal ?? null : null;
+                const isEvent = e.event_type === "event";
+                // Bei Events mit Essen oder Gästen öffnet die Zusage erst das Sheet – auch wenn der
+                // Trainer das Limit inzwischen auf 0 gesenkt hat, damit sich alte Gäste entfernen lassen.
+                const usesSheet = isEvent && (e.with_food || e.max_guests > 0 || guests.length > 0);
+                // "Mit Essen" kann nachträglich eingeschaltet werden – dann fehlt die Wahl noch.
+                const needsMeal = e.with_food && accepted && !meal;
                 const deadline = new Date(e.event_at);
                 deadline.setHours(13, 0, 0, 0);
                 const isDeadlinePassed = e.event_type === "training" && Date.now() >= deadline.getTime();
@@ -153,27 +173,26 @@ function PlayerHome() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
-                    className="card-elevated p-5"
+                    className={`card-elevated p-5 ${isEvent ? "border-yellow-400/60" : ""}`}
                   >
                     <div className="flex items-start gap-4">
-                      <div className={`h-12 w-12 rounded-xl grid place-items-center shrink-0 ${e.event_type === "training" ? "bg-primary/15 text-primary" : "bg-chart-2/15 text-chart-2"}`}>
-                        {e.event_type === "training" ? <Activity className="h-5 w-5" /> : <Trophy className="h-5 w-5" />}
-                      </div>
+                      <EventTypeIcon type={e.event_type} className="h-12 w-12 rounded-xl" iconClassName="h-5 w-5" />
                       <div className="min-w-0 flex-1">
-                        <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                          {e.event_type === "training" ? "Training" : `Spiel${e.home_away ? ` · ${e.home_away === "home" ? "Heim" : "Auswärts"}` : ""}`}
+                        <div className={`text-xs uppercase tracking-wider font-medium ${isEvent ? "text-yellow-400" : "text-muted-foreground"}`}>
+                          {eventTypeLabel(e)}
                         </div>
                         <div className="font-bold text-lg mt-0.5">{e.title}{e.opponent ? `` : ""}</div>
                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-sm text-muted-foreground">
                           <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {format(new Date(e.event_at), "EEE d. MMM · HH:mm", { locale: de })}</span>
                           {e.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {e.location}</span>}
+                          {e.with_food && <span className="inline-flex items-center gap-1"><Utensils className="h-3.5 w-3.5" /> Mit Essen</span>}
                         </div>
                         {e.description && <p className="text-sm mt-2 text-muted-foreground">{e.description}</p>}
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-4">
                       <Button
-                        onClick={() => m.mutate({ eventId: e.id, status: "accepted" })}
+                        onClick={() => usesSheet ? openSheet(e) : m.mutate({ eventId: e.id, status: "accepted" })}
                         disabled={m.isPending || isDeadlinePassed}
                         className={status === "accepted" ? "bg-primary text-primary-foreground shadow-glow" : "bg-secondary text-foreground hover:bg-primary/20"}
                           title={isDeadlinePassed ? "Antwortfrist (Deadline) überschritten" : undefined}
@@ -189,6 +208,23 @@ function PlayerHome() {
                         <X className="h-4 w-4 mr-1" /> Absagen
                       </Button>
                     </div>
+                    {usesSheet && accepted && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                        {meal && <AcceptChip label="Du" meal={meal} />}
+                        {guests.map((g, gi) => (
+                          <AcceptChip key={gi} label={`${g.name} (Gast)`} meal={e.with_food ? g.meal : null} />
+                        ))}
+                        {needsMeal ? (
+                          <Button size="sm" className="h-7 px-2 text-xs bg-yellow-400/15 text-yellow-400 hover:bg-yellow-400/25" onClick={() => openSheet(e)}>
+                            <Utensils className="h-3.5 w-3.5 mr-1" /> Bitte Essen wählen
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openSheet(e)}>
+                            <Pencil className="h-3.5 w-3.5 mr-1" /> Zusage bearbeiten
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}
@@ -202,9 +238,7 @@ function PlayerHome() {
             <div className="card-elevated divide-y divide-border">
               {history.slice(0, 20).map((h) => (
                 <div key={h.id} className="flex items-center gap-3 p-4">
-                  <div className={`h-8 w-8 rounded-lg grid place-items-center shrink-0 ${h.event_type === "training" ? "bg-primary/15 text-primary" : "bg-chart-2/15 text-chart-2"}`}>
-                    {h.event_type === "training" ? <Activity className="h-4 w-4" /> : <Trophy className="h-4 w-4" />}
-                  </div>
+                  <EventTypeIcon type={h.event_type} className="h-8 w-8 rounded-lg" iconClassName="h-4 w-4" />
                   <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">{h.title}</div>
                     <div className="text-xs text-muted-foreground">{format(new Date(h.event_at), "d. MMM yyyy", { locale: de })}</div>
@@ -216,7 +250,32 @@ function PlayerHome() {
           </section>
         )}
       </main>
+
+      {sheet && (
+        <ParticipationSheet
+          key={sheet.n}
+          event={sheet.event}
+          open={sheet.open}
+          saving={m.isPending}
+          onClose={closeSheet}
+          onSave={({ meal, guests }) => m.mutate(
+            { eventId: sheet.event.id, status: "accepted", meal, guests },
+            { onSuccess: closeSheet },
+          )}
+        />
+      )}
     </div>
+  );
+}
+
+// Grüner Chip für die eigene Zusage bzw. einen Gast, bei Events mit Essen mit Essenswahl.
+function AcceptChip({ label, meal }: { label: string; meal: Meal | null }) {
+  const Icon = meal ? MEAL_META[meal].icon : null;
+  return (
+    <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-semibold text-primary bg-primary/15">
+      {label}
+      {meal && Icon && <><span className="opacity-60">·</span><Icon className="h-3.5 w-3.5" />{MEAL_META[meal].label}</>}
+    </span>
   );
 }
 

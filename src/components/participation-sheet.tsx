@@ -1,0 +1,128 @@
+import { useRef, useState, type FormEvent } from "react";
+import type { EventGuest, Meal, PlayerUpcomingEvent } from "@/lib/api-client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { MealPicker } from "@/components/meal-picker";
+import { Check, UserPlus, Utensils, X } from "lucide-react";
+
+type GuestRow = { id: number; name: string; meal: Meal | null };
+
+// Zusage zu einem Event als Bottom-Sheet (die App wird fast nur am Handy genutzt):
+// eigene Essenswahl und Gäste mit ihrem Essen auf einer Seite. Essen gibt es nur bei
+// Events "Mit Essen", Gäste nur, wenn der Trainer welche erlaubt hat.
+export function ParticipationSheet({
+  event,
+  open,
+  saving,
+  onClose,
+  onSave,
+}: {
+  event: PlayerUpcomingEvent;
+  open: boolean;
+  saving: boolean;
+  onClose: () => void;
+  onSave: (data: { meal: Meal | null; guests: EventGuest[] }) => void;
+}) {
+  const max = event.max_guests;
+  const withFood = event.with_food;
+  const current = event.attendances[0]?.status === "accepted" ? event.attendances[0] : undefined;
+
+  const nextId = useRef(0);
+  const [meal, setMeal] = useState<Meal | null>(withFood ? current?.meal ?? null : null);
+  const [guests, setGuests] = useState<GuestRow[]>(() =>
+    (current?.guests ?? []).map((g) => ({ id: nextId.current++, name: g.name, meal: withFood ? g.meal : null })),
+  );
+  const [focusId, setFocusId] = useState<number | null>(null);
+
+  const updateGuest = (id: number, patch: Partial<GuestRow>) =>
+    setGuests((gs) => gs.map((g) => (g.id === id ? { ...g, ...patch } : g)));
+  const addGuest = () => {
+    const id = nextId.current++;
+    setGuests((gs) => [...gs, { id, name: "", meal: null }]);
+    setFocusId(id);
+  };
+
+  // Gäste ohne Namen werden beim Speichern verworfen.
+  const named = guests.filter((g) => g.name.trim());
+  const guestWord = max === 1 ? "Gast" : "Gäste";
+  const guestWithoutMeal = withFood ? named.find((g) => !g.meal) : undefined;
+  const problem =
+    named.length > max ? (max === 0 ? "Keine Gäste mehr erlaubt – bitte entfernen." : `Maximal ${max} ${guestWord} erlaubt.`)
+    : withFood && !meal ? "Bitte wähle dein Essen."
+    : guestWithoutMeal ? `Bitte wähle ein Essen für ${guestWithoutMeal.name.trim()}.`
+    : null;
+
+  const submit = (ev: FormEvent) => {
+    ev.preventDefault();
+    if (problem) return;
+    onSave({
+      meal: withFood ? meal : null,
+      guests: named.map((g) => ({ name: g.name.trim(), meal: withFood ? g.meal : null })),
+    });
+  };
+
+  return (
+    <Drawer open={open} onOpenChange={(o) => { if (!o) onClose(); }} shouldScaleBackground={false}>
+      <DrawerContent className="max-h-[92dvh] sm:max-w-lg sm:mx-auto">
+        <DrawerHeader className="text-left">
+          <DrawerTitle>{current ? "Zusage bearbeiten" : "Deine Zusage"}</DrawerTitle>
+          <DrawerDescription className="flex flex-wrap items-center gap-x-2">
+            <span>{event.title}</span>
+            {withFood && <span className="inline-flex items-center gap-1 text-primary"><Utensils className="h-3.5 w-3.5" /> Mit Essen</span>}
+          </DrawerDescription>
+        </DrawerHeader>
+
+        <form id="participation-form" onSubmit={submit} className="flex-1 overflow-y-auto px-4 pb-2 space-y-5">
+          {withFood && (
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold">Was isst du?</h3>
+              <MealPicker value={meal} onChange={setMeal} />
+            </section>
+          )}
+
+          {/* Auch bei Limit 0 zeigen, solange noch Gäste eingetragen sind – sonst ließen sie sich
+              nach einer Senkung durch den Trainer nicht mehr entfernen. */}
+          {(max > 0 || guests.length > 0) && (
+            <section className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <h3 className="text-sm font-semibold">Bringst du jemanden mit?</h3>
+                <span className="text-xs text-muted-foreground">{max > 0 ? `bis zu ${max} ${guestWord}` : "keine Gäste mehr erlaubt"}</span>
+              </div>
+              {guests.map((g, i) => (
+                <div key={g.id} className="space-y-2 rounded-xl border border-border p-3">
+                  <div className="flex gap-2">
+                    <Input
+                      value={g.name}
+                      maxLength={80}
+                      placeholder={`Name Gast ${i + 1}`}
+                      autoFocus={g.id === focusId}
+                      onChange={(ev) => updateGuest(g.id, { name: ev.target.value })}
+                    />
+                    <Button type="button" variant="outline" size="icon" className="shrink-0" title="Gast entfernen"
+                      onClick={() => setGuests((gs) => gs.filter((x) => x.id !== g.id))}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {withFood && <MealPicker value={g.meal} onChange={(m) => updateGuest(g.id, { meal: m })} />}
+                </div>
+              ))}
+              {max > 0 && (
+                <Button type="button" variant="outline" className="w-full" disabled={guests.length >= max} onClick={addGuest}>
+                  <UserPlus className="h-4 w-4 mr-1" /> Gast hinzufügen ({guests.length}/{max})
+                </Button>
+              )}
+            </section>
+          )}
+        </form>
+
+        <DrawerFooter>
+          {problem && <p className="text-xs text-yellow-400 text-center">{problem}</p>}
+          <Button type="submit" form="participation-form" className="w-full h-12 shadow-glow" disabled={saving || !!problem}>
+            <Check className="h-4 w-4 mr-1" /> {current ? "Speichern" : "Zusagen"}
+          </Button>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
+  );
+}

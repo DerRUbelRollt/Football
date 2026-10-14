@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { api, type EventDetail, type NewEvent } from "@/lib/api-client";
+import { api, type EventDetail, type EventType, type NewEvent } from "@/lib/api-client";
+import { EVENT_TYPE_META } from "@/lib/event-type";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ type Props =
 const HOME_LOCATION = "Neunkircher Str. 7A, 66333 Völklingen";
 
 const DEFAULT_TIME = "18:00";
+const DEFAULT_MAX_GUESTS = 1;
 
 // Bei Spielen ist der Treffpunkt eine Uhrzeit und liegt automatisch 1 Stunde 15 Minuten
 // vor Spielbeginn. Bei Trainings bleibt er ein freies Textfeld.
@@ -31,11 +33,12 @@ const meetingTimeFor = (time: string) => {
 };
 
 // Dialog zum Erstellen und Bearbeiten von Ereignissen. Beim Bearbeiten ist der Typ fest
-// und die wöchentliche Wiederholung entfällt.
+// und die wöchentliche Wiederholung entfällt. Events (Vereinsfeiern) haben keinen Treffpunkt,
+// dafür eine Obergrenze, wie viele Gäste jeder Spieler mitbringen darf, und optional Essen.
 export function EventFormDialog(props: Props) {
   const isEdit = props.mode === "edit";
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<"training" | "game">("training");
+  const [type, setType] = useState<EventType>("training");
   const [groupId, setGroupId] = useState("");
   const [title, setTitle] = useState("");
   const [opponent, setOpponent] = useState("");
@@ -47,6 +50,8 @@ export function EventFormDialog(props: Props) {
   const [desc, setDesc] = useState("");
   const [recurring, setRecurring] = useState(false);
   const [weeks, setWeeks] = useState(4);
+  const [maxGuests, setMaxGuests] = useState(DEFAULT_MAX_GUESTS);
+  const [withFood, setWithFood] = useState(false);
 
   const groupsQ = useQuery({
     queryKey: ["groups"],
@@ -70,6 +75,8 @@ export function EventFormDialog(props: Props) {
       setLocation(e.location ?? "");
       setMeeting(e.meeting_point ?? "");
       setDesc(e.description ?? "");
+      setMaxGuests(e.event_type === "event" ? e.max_guests : DEFAULT_MAX_GUESTS);
+      setWithFood(e.event_type === "event" && e.with_food);
     }
     setOpen(next);
   };
@@ -79,7 +86,7 @@ export function EventFormDialog(props: Props) {
   const applyHomeLocation = (isHomeGame: boolean) =>
     setLocation((cur) => (isHomeGame ? HOME_LOCATION : cur === HOME_LOCATION ? "" : cur));
 
-  const selectType = (t: "training" | "game") => {
+  const selectType = (t: EventType) => {
     setType(t);
     applyHomeLocation(t === "game" && homeAway === "home");
     setMeeting(t === "game" ? meetingTimeFor(time) : "");
@@ -108,10 +115,12 @@ export function EventFormDialog(props: Props) {
           opponent: type === "game" ? opponent : null,
           homeAway: type === "game" ? homeAway : null,
           location: location || null,
-          meetingPoint: meeting || null,
+          meetingPoint: type !== "event" && meeting ? meeting : null,
           eventAt: d.toISOString(),
           description: desc || null,
           groupId: Number(groupId),
+          maxGuests: type === "event" ? Math.max(0, Math.min(20, maxGuests)) : null,
+          withFood: type === "event" ? withFood : null,
         };
       });
       if (props.mode === "edit") {
@@ -130,7 +139,7 @@ export function EventFormDialog(props: Props) {
         setTitle(""); setOpponent(""); setDate(""); setDesc("");
         setMeeting(type === "game" ? meetingTimeFor(time) : "");
         setLocation(type === "game" && homeAway === "home" ? HOME_LOCATION : "");
-        setRecurring(false); setWeeks(4);
+        setRecurring(false); setWeeks(4); setMaxGuests(DEFAULT_MAX_GUESTS); setWithFood(false);
       }
       setOpen(false);
       props.onSaved();
@@ -147,15 +156,16 @@ export function EventFormDialog(props: Props) {
           <Button className="shadow-glow"><Plus className="h-4 w-4 mr-1" /> Ereignis</Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      {/* Auf dem Handy mit Rand und scrollbar – das Formular ist länger als der Bildschirm. */}
+      <DialogContent className="max-w-lg w-[calc(100%-2rem)] rounded-xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader><DialogTitle>{isEdit ? "Ereignis bearbeiten" : "Neues Ereignis"}</DialogTitle></DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); m.mutate(); }} className="space-y-4">
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
-            {(["training", "game"] as const).map((t) => (
+          <div className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1">
+            {(["training", "game", "event"] as const).map((t) => (
               <button type="button" key={t} onClick={() => selectType(t)} disabled={isEdit}
                 title={isEdit ? "Der Typ kann nachträglich nicht geändert werden" : undefined}
                 className={`h-10 rounded-lg text-sm font-semibold transition disabled:cursor-not-allowed ${type === t ? "bg-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:hover:text-muted-foreground"}`}>
-                {t === "training" ? "Training" : "Spiel"}
+                {EVENT_TYPE_META[t].label}
               </button>
             ))}
           </div>
@@ -172,6 +182,11 @@ export function EventFormDialog(props: Props) {
             <div className="space-y-2">
               <Label>Titel</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Techniktraining" />
+            </div>
+          ) : type === "event" ? (
+            <div className="space-y-2">
+              <Label>Name des Events</Label>
+              <Input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Sommerfest" />
             </div>
           ) : (
             <>
@@ -224,16 +239,54 @@ export function EventFormDialog(props: Props) {
               )}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Ort</Label>
-              <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Sportplatz" />
+          {type === "event" ? (
+            <>
+              {/* items-end: das lange Label bricht auf dem Handy um, die Felder bleiben trotzdem auf einer Höhe. */}
+              <div className="grid grid-cols-2 gap-3 items-end">
+                <div className="space-y-2">
+                  <Label>Ort</Label>
+                  <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Vereinsheim" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Max. Gäste pro Spieler</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={20}
+                    value={maxGuests}
+                    onChange={(e) => setMaxGuests(parseInt(e.target.value) || 0)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Essen</Label>
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
+                  {([false, true] as const).map((v) => (
+                    <button type="button" key={String(v)} onClick={() => setWithFood(v)}
+                      className={`h-10 rounded-lg text-sm font-semibold transition ${withFood === v ? "bg-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:text-foreground"}`}>
+                      {v ? "Mit Essen" : "Ohne Essen"}
+                    </button>
+                  ))}
+                </div>
+                {withFood && (
+                  <p className="text-xs text-muted-foreground">
+                    Spieler wählen bei der Zusage Vegan, Vegetarisch oder Fleisch – für sich und jeden Gast.
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Ort</Label>
+                <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Sportplatz" />
+              </div>
+              <div className="space-y-2">
+                <Label>Treffpunkt</Label>
+                <Input type={type === "game" ? "time" : "text"} value={meeting} onChange={(e) => setMeeting(e.target.value)} placeholder="Vereinsheim" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Treffpunkt</Label>
-              <Input type={type === "game" ? "time" : "text"} value={meeting} onChange={(e) => setMeeting(e.target.value)} placeholder="Vereinsheim" />
-            </div>
-          </div>
+          )}
           <div className="space-y-2">
             <Label>Beschreibung</Label>
             <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} />

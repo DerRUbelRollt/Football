@@ -5,6 +5,7 @@ import { api, type EventListItem } from "@/lib/api-client";
 import { motion } from "framer-motion";
 import { Users, CalendarDays, Trophy, Activity, ArrowRight, Plus, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EventTypeIcon } from "@/components/event-type-icon";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -58,7 +59,8 @@ function Dashboard() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
-        <div className="card-elevated p-6 lg:col-span-2">
+        {/* min-w-0: lange Titel (truncate) sollen die Spalte auf dem Handy nicht verbreitern. */}
+        <div className="card-elevated p-6 lg:col-span-2 min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold">Kommende Ereignisse</h2>
             <Link to="/events" className="text-xs text-primary hover:underline inline-flex items-center gap-1">Alle anzeigen <ArrowRight className="h-3 w-3" /></Link>
@@ -66,7 +68,7 @@ function Dashboard() {
           {q.isLoading ? (
             <div className="py-8 text-center text-sm text-muted-foreground">Lädt…</div>
           ) : q.data?.upcoming.length === 0 ? (
-            <EmptyState title="Noch keine Ereignisse" hint="Erstelle dein erstes Training oder Spiel." />
+            <EmptyState title="Noch keine Ereignisse" hint="Erstelle dein erstes Training, Spiel oder Event." />
           ) : (
             <ul className="space-y-2">
               {q.data?.upcoming.map((e: EventListItem) => (
@@ -76,9 +78,7 @@ function Dashboard() {
                     params={{ eventId: String(e.id) }}
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary transition"
                   >
-                    <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${e.event_type === "training" ? "bg-primary/15 text-primary" : "bg-chart-2/15 text-chart-2"}`}>
-                      {e.event_type === "training" ? <Activity className="h-5 w-5" /> : <Trophy className="h-5 w-5" />}
-                    </div>
+                    <EventTypeIcon type={e.event_type} className="h-10 w-10 rounded-lg" iconClassName="h-5 w-5" />
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold truncate">{e.title}{e.opponent ? `` : ""}</div>
                       <div className="text-xs text-muted-foreground">{e.groups?.name} · {format(new Date(e.event_at), "EEE d. MMM · HH:mm", { locale: de })}</div>

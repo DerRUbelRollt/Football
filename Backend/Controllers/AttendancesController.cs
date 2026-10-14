@@ -20,10 +20,14 @@ public class AttendancesController : ControllerBase
         if (TrainerAuth.FromRequest(Request) is not { } trainer) return Unauthorized(new { error = "Unauthorized" });
         if (!AllowedStatuses.Contains(req.Status)) return BadRequest(new { error = "Ungültiger Status" });
 
-        var att = await _ctx.Attendances.FirstOrDefaultAsync(a => a.Id == id);
+        var att = await _ctx.Attendances.Include(a => a.Event).FirstOrDefaultAsync(a => a.Id == id);
         if (att == null) return NotFound(new { error = "Anwesenheit nicht gefunden" });
+        // Bei Events mit Essen gehört zur Zusage die Essenswahl – die trifft nur der Spieler selbst.
+        if (att.Event?.WithFood == true) return BadRequest(new { error = "Bei Events mit Essen sagen die Spieler selbst zu oder ab" });
 
         att.Status = req.Status;
+        // Gäste und Essen gibt es nur bei einer Zusage.
+        if (req.Status != "accepted") att.ClearAcceptance();
         att.TrainerId = trainer.userId;
         att.UpdatedAt = DateTime.UtcNow;
         await _ctx.SaveChangesAsync();

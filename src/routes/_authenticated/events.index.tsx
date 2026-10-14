@@ -5,10 +5,11 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EventFormDialog } from "@/components/event-form-dialog";
-import { Activity, Trophy, ArrowRight, Search } from "lucide-react";
+import { ArrowRight, Search } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { EmptyState } from "./dashboard";
+import { EventTypeIcon } from "@/components/event-type-icon";
 
 export const Route = createFileRoute("/_authenticated/events/")({
   head: () => ({ meta: [{ title: "Ereignisse" }] }),
@@ -41,7 +42,7 @@ function EventsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tight">Ereignisse</h1>
-          <p className="text-muted-foreground mt-1">Trainings und Spiele deiner Mannschaften.</p>
+          <p className="text-muted-foreground mt-1">Trainings, Spiele und Events deiner Mannschaften.</p>
         </div>
         <EventFormDialog mode="create" onSaved={() => qc.invalidateQueries({ queryKey: ["events"] })} />
       </div>
@@ -62,14 +63,12 @@ function EventsPage() {
       {q.isLoading ? (
         <div className="py-10 text-center text-muted-foreground">Lädt…</div>
       ) : list.length === 0 ? (
-        <div className="card-elevated"><EmptyState title="Keine Ereignisse" hint="Erstelle dein erstes Training oder Spiel." /></div>
+        <div className="card-elevated"><EmptyState title="Keine Ereignisse" hint="Erstelle dein erstes Training, Spiel oder Event." /></div>
       ) : (
         <div className="grid gap-3">
           {list.map((e) => (
-            <Link key={e.id} to="/events/$eventId" params={{ eventId: String(e.id) }} className="card-elevated p-4 flex items-center gap-4 hover:border-primary/50 transition group">
-              <div className={`h-12 w-12 rounded-xl grid place-items-center shrink-0 ${e.event_type === "training" ? "bg-primary/15 text-primary" : "bg-chart-2/15 text-chart-2"}`}>
-                {e.event_type === "training" ? <Activity className="h-5 w-5" /> : <Trophy className="h-5 w-5" />}
-              </div>
+            <Link key={e.id} to="/events/$eventId" params={{ eventId: String(e.id) }} className="card-elevated p-4 flex items-center gap-4 min-w-0 hover:border-primary/50 transition group">
+              <EventTypeIcon type={e.event_type} className="h-12 w-12 rounded-xl" iconClassName="h-5 w-5" />
               <div className="min-w-0 flex-1">
                 <div className="font-semibold truncate">{e.title}{e.opponent ? `` : ""}</div>
                 <div className="text-xs text-muted-foreground truncate">

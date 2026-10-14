@@ -12,6 +12,8 @@ const updateSchema = z.object({
   eventAt: z.string().datetime(),
   description: z.string().trim().max(1000).nullable().optional(),
   groupId: z.coerce.number().int().positive(),
+  maxGuests: z.coerce.number().int().min(0).max(20).nullable().optional(),
+  withFood: z.boolean().nullable().optional(),
 });
 
 export const Route = createFileRoute("/api/events/$eventId")({

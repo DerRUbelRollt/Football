@@ -55,7 +55,7 @@ public class EventsController : ControllerBase
         foreach (var row in rows)
         {
             if (string.IsNullOrWhiteSpace(row.Title)) return BadRequest(new { error = "Titel ist erforderlich" });
-            if (row.EventType != "training" && row.EventType != "game") return BadRequest(new { error = "Ungültiger Ereignistyp" });
+            if (row.EventType != "training" && row.EventType != "game" && row.EventType != "event") return BadRequest(new { error = "Ungültiger Ereignistyp" });
 
             var ev = new Event
             {
@@ -67,6 +67,8 @@ public class EventsController : ControllerBase
                 MeetingPoint = string.IsNullOrWhiteSpace(row.MeetingPoint) ? null : row.MeetingPoint.Trim(),
                 EventAt = row.EventAt.ToUniversalTime(),
                 Description = string.IsNullOrWhiteSpace(row.Description) ? null : row.Description.Trim(),
+                MaxGuests = row.EventType == "event" ? ClampGuests(row.MaxGuests) : 0,
+                WithFood = row.EventType == "event" && (row.WithFood ?? false),
                 GroupId = row.GroupId
             };
             _ctx.Events.Add(ev);
@@ -102,6 +104,8 @@ public class EventsController : ControllerBase
             meeting_point = e.MeetingPoint,
             event_at = e.EventAt,
             description = e.Description,
+            max_guests = e.MaxGuests,
+            with_food = e.WithFood,
             group_id = e.GroupId,
             groups = e.Group == null ? null : new { name = e.Group.Name }
         });
@@ -124,6 +128,14 @@ public class EventsController : ControllerBase
         e.MeetingPoint = string.IsNullOrWhiteSpace(req.MeetingPoint) ? null : req.MeetingPoint.Trim();
         e.EventAt = req.EventAt.ToUniversalTime();
         e.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
+        // Bereits eingetragene Gäste bleiben beim Senken des Limits erhalten; es greift beim nächsten Speichern.
+        // Schon gewählte Essen bleiben gespeichert, falls "Mit Essen" später wieder eingeschaltet wird.
+        // Fehlen die Felder in der Anfrage (z. B. aus einer älteren Frontend-Version), bleibt der alte Wert.
+        if (e.EventType == "event")
+        {
+            if (req.MaxGuests is int maxGuests) e.MaxGuests = ClampGuests(maxGuests);
+            if (req.WithFood is bool withFood) e.WithFood = withFood;
+        }
 
         if (req.GroupId != e.GroupId)
         {
@@ -180,25 +192,30 @@ public class EventsController : ControllerBase
     public async Task<IActionResult> Attendances(int id)
     {
         if (TrainerAuth.FromRequest(Request) == null) return Unauthorized(new { error = "Unauthorized" });
-        var rows = await _ctx.Attendances
+        // Erst laden, dann umformen: Gäste und ihr Essen werden im Speicher zusammengeführt.
+        var attendances = await _ctx.Attendances
             .Where(a => a.EventId == id)
             .Include(a => a.Player)
             .OrderBy(a => a.Player!.LastName).ThenBy(a => a.Player!.FirstName)
-            .Select(a => new
-            {
-                id = a.Id,
-                status = a.Status,
-                players = a.Player == null ? null : new
-                {
-                    id = a.Player.Id,
-                    first_name = a.Player.FirstName,
-                    last_name = a.Player.LastName,
-                    player_code = a.Player.PlayerCode
-                }
-            })
             .ToListAsync();
+        var rows = attendances.Select(a => new
+        {
+            id = a.Id,
+            status = a.Status,
+            meal = a.Meal,
+            guests = a.GuestEntries(),
+            players = a.Player == null ? null : new
+            {
+                id = a.Player.Id,
+                first_name = a.Player.FirstName,
+                last_name = a.Player.LastName,
+                player_code = a.Player.PlayerCode
+            }
+        });
         return Ok(rows);
     }
+
+    private static int ClampGuests(int? maxGuests) => Math.Clamp(maxGuests ?? 0, 0, 20);
 }
 
 public record CreateEventRequest(
@@ -210,7 +227,9 @@ public record CreateEventRequest(
     string? MeetingPoint,
     DateTime EventAt,
     string? Description,
-    int GroupId);
+    int GroupId,
+    int? MaxGuests = null,
+    bool? WithFood = null);
 
 public record UpdateEventRequest(
     string Title,
@@ -220,6 +239,8 @@ public record UpdateEventRequest(
     string? MeetingPoint,
     DateTime EventAt,
     string? Description,
-    int GroupId);
+    int GroupId,
+    int? MaxGuests = null,
+    bool? WithFood = null);
 
 public record SetResultRequest(int? HomeScore, int? AwayScore);

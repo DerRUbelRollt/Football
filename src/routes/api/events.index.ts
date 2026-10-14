@@ -3,7 +3,7 @@ import { z } from "zod";
 import { handle, jsonResponse, readJson, forwardAuthHeaders } from "@/lib/api-helpers.server";
 
 const eventSchema = z.object({
-  eventType: z.enum(["training", "game"]),
+  eventType: z.enum(["training", "game", "event"]),
   title: z.string().trim().min(1).max(160),
   opponent: z.string().trim().max(160).nullable().optional(),
   homeAway: z.enum(["home", "away"]).nullable().optional(),
@@ -12,6 +12,8 @@ const eventSchema = z.object({
   eventAt: z.string().datetime(),
   description: z.string().trim().max(1000).nullable().optional(),
   groupId: z.coerce.number().int().positive(),
+  maxGuests: z.coerce.number().int().min(0).max(20).nullable().optional(),
+  withFood: z.boolean().nullable().optional(),
 });
 
 const createSchema = z.array(eventSchema).min(1).max(60);

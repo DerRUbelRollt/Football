@@ -1,17 +1,21 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api-client";
-import { useState, type FormEvent } from "react";
+import { api, type AttendanceStatus, type Meal } from "@/lib/api-client";
+import { Fragment, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Activity, Trophy, MapPin, Users, Trash2, Search, Check, X, Clock, Goal, FileDown } from "lucide-react";
+import { ArrowLeft, MapPin, Users, Trash2, Search, Check, X, Clock, Goal, FileDown, type LucideIcon } from "lucide-react";
 import type { EventDetail } from "@/lib/api-client";
 import type { KitColors } from "@/lib/event-pdf";
 import { EventFormDialog } from "@/components/event-form-dialog";
+import { EventTypeIcon } from "@/components/event-type-icon";
+import { eventTypeLabel } from "@/lib/event-type";
+import { MEAL_META, MEAL_ORDER } from "@/lib/meal";
+import { MealBadge } from "@/components/meal-picker";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -47,18 +51,33 @@ function EventDetail() {
   });
 
   const e = eventQ.data;
+  // Bei Events mit Essen sagen nur die Spieler selbst zu oder ab (inkl. Essenswahl).
+  const withFood = !!e?.with_food;
   const items = attQ.data ?? [];
+  // Gäste von Zusagen zählen bei Gesamt und Zugesagt mit.
+  const guestCount = items.reduce((n, a) => n + (a.status === "accepted" ? a.guests.length : 0), 0);
   const stats = {
-    total: items.length,
-    accepted: items.filter((a) => a.status === "accepted").length,
+    total: items.length + guestCount,
+    accepted: items.filter((a) => a.status === "accepted").length + guestCount,
     declined: items.filter((a) => a.status === "declined").length,
     pending: items.filter((a) => a.status === "pending").length,
   };
+  // Essen je Art für zugesagte Spieler und ihre Gäste.
+  const mealCounts: Record<Meal, number> = { vegan: 0, vegetarian: 0, meat: 0 };
+  let withoutMeal = 0;
+  for (const a of items) {
+    if (a.status !== "accepted") continue;
+    for (const m of [a.meal, ...a.guests.map((g) => g.meal)]) {
+      if (m) mealCounts[m]++;
+      else withoutMeal++;
+    }
+  }
+  const guestHint = guestCount > 0 ? `inkl. ${guestCount} ${guestCount === 1 ? "Gast" : "Gäste"}` : null;
   const filtered = items.filter((a) => {
     if (filter !== "all" && a.status !== filter) return false;
     const p = a.players;
     const s = search.toLowerCase();
-    return !s || `${p?.first_name} ${p?.last_name}`.toLowerCase().includes(s);
+    return !s || [`${p?.first_name} ${p?.last_name}`, ...a.guests.map((g) => g.name)].some((n) => n.toLowerCase().includes(s));
   });
 
   return (
@@ -69,12 +88,12 @@ function EventDetail() {
         <div className="card-elevated p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-start gap-4 min-w-0">
-              <div className={`h-14 w-14 rounded-2xl grid place-items-center shrink-0 ${e.event_type === "training" ? "bg-primary/15 text-primary" : "bg-chart-2/15 text-chart-2"}`}>
-                {e.event_type === "training" ? <Activity className="h-6 w-6" /> : <Trophy className="h-6 w-6" />}
-              </div>
+              <EventTypeIcon type={e.event_type} className="h-14 w-14 rounded-2xl" iconClassName="h-6 w-6" />
               <div className="min-w-0">
-                <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                  {e.event_type === "training" ? "Training" : `Spiel${e.home_away ? ` · ${e.home_away === "home" ? "Heim" : "Auswärts"}` : ""}`}
+                <div className={`text-xs uppercase tracking-wider font-medium ${e.event_type === "event" ? "text-yellow-400" : "text-muted-foreground"}`}>
+                  {eventTypeLabel(e)}
+                  {e.event_type === "event" && ` · bis zu ${e.max_guests} ${e.max_guests === 1 ? "Gast" : "Gäste"} pro Spieler`}
+                  {withFood && " · mit Essen"}
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight mt-1">
                   {e.title}{e.opponent ? `` : ""}
@@ -130,11 +149,25 @@ function EventDetail() {
         </div>
       )}
 
+      {/* Kacheln und Liste erst, wenn das Ereignis geladen ist – vorher ist "Mit Essen" unbekannt
+          und es würden kurz die (gesperrten) Status-Buttons erscheinen. */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatChip label="Gesamt" value={stats.total} className="bg-secondary" />
-        <StatChip label="Zugesagt" value={stats.accepted} className="bg-primary/15 text-primary" />
-        <StatChip label="Abgesagt" value={stats.declined} className="bg-destructive/15 text-destructive" />
-        <StatChip label="Offen" value={stats.pending} className="bg-warning/15 text-warning" />
+        {!e ? null : withFood ? (
+          <>
+            <StatChip label="Zugesagt" value={stats.accepted} className="bg-primary/15 text-primary"
+              hint={[guestHint, withoutMeal > 0 ? `${withoutMeal} ohne Essenswahl` : null].filter(Boolean).join(" · ") || undefined} />
+            {MEAL_ORDER.map((m) => (
+              <StatChip key={m} label={MEAL_META[m].label} icon={MEAL_META[m].icon} value={mealCounts[m]} className="bg-secondary" />
+            ))}
+          </>
+        ) : (
+          <>
+            <StatChip label="Gesamt" value={stats.total} className="bg-secondary" />
+            <StatChip label="Zugesagt" value={stats.accepted} className="bg-primary/15 text-primary" hint={guestHint ?? undefined} />
+            <StatChip label="Abgesagt" value={stats.declined} className="bg-destructive/15 text-destructive" />
+            <StatChip label="Offen" value={stats.pending} className="bg-warning/15 text-warning" />
+          </>
+        )}
       </div>
 
       <div className="card-elevated p-5 sm:p-6 space-y-4">
@@ -153,28 +186,53 @@ function EventDetail() {
           </div>
         </div>
 
-        {attQ.isLoading ? (
+        {attQ.isLoading || !e ? (
           <div className="py-10 text-center text-muted-foreground text-sm">Lädt…</div>
         ) : (
           <ul className="divide-y divide-border">
             {filtered.map((a) => (
-              <li key={a.id} className="flex items-center gap-3 py-3">
-                <div className="h-9 w-9 rounded-full bg-secondary grid place-items-center text-xs font-bold shrink-0">
-                  {a.players?.first_name[0]}{a.players?.last_name[0]}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium truncate">{a.players?.first_name} {a.players?.last_name}</div>
-                  <div className="text-xs text-muted-foreground font-mono">{a.players?.player_code}</div>
-                </div>
-                <StatusPill status={a.status} onChange={async (s) => {
-                  try {
-                    await api.attendances.setStatus(a.id, s);
-                    qc.invalidateQueries({ queryKey: ["event-att", eventId] });
-                  } catch (err) {
-                    toast.error((err as Error).message);
-                  }
-                }} />
-              </li>
+              <Fragment key={a.id}>
+                <li className="flex items-center gap-3 py-3">
+                  <div className="h-9 w-9 rounded-full bg-secondary grid place-items-center text-xs font-bold shrink-0">
+                    {a.players?.first_name[0]}{a.players?.last_name[0]}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium truncate">{a.players?.first_name} {a.players?.last_name}</div>
+                    <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                      <span className="font-mono">{a.players?.player_code}</span>
+                      {withFood && a.status === "accepted" && <MealInfo meal={a.meal} />}
+                    </div>
+                  </div>
+                  {withFood ? (
+                    <StatusBadge status={a.status} />
+                  ) : (
+                    <StatusPill status={a.status} onChange={async (s) => {
+                      try {
+                        await api.attendances.setStatus(a.id, s);
+                        qc.invalidateQueries({ queryKey: ["event-att", eventId] });
+                      } catch (err) {
+                        toast.error((err as Error).message);
+                      }
+                    }} />
+                  )}
+                </li>
+                {/* Gäste stehen eingerückt unter dem Spieler, der sie mitbringt. */}
+                {a.status === "accepted" && a.guests.map((g, gi) => (
+                  <li key={gi} className="flex items-center gap-3 py-3 pl-6">
+                    <div className="h-9 w-9 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">
+                      {initials(g.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate text-primary">{g.name} (Gast)</div>
+                      <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                        <span className="truncate">Gast von {a.players?.first_name} {a.players?.last_name}</span>
+                        {withFood && <MealInfo meal={g.meal} />}
+                      </div>
+                    </div>
+                    <StatusBadge status="accepted" />
+                  </li>
+                ))}
+              </Fragment>
             ))}
           </ul>
         )}
@@ -299,13 +357,38 @@ function PdfDialog({ event }: { event: EventDetail }) {
   );
 }
 
-function StatChip({ label, value, className }: { label: string; value: number; className?: string }) {
+function StatChip({ label, value, className, hint, icon: Icon }: { label: string; value: number; className?: string; hint?: string; icon?: LucideIcon }) {
   return (
     <div className={`rounded-xl p-4 ${className}`}>
-      <div className="text-xs opacity-75 font-medium uppercase tracking-wider">{label}</div>
+      <div className="text-xs opacity-75 font-medium uppercase tracking-wider inline-flex items-center gap-1">
+        {Icon && <Icon className="h-3.5 w-3.5" />}{label}
+      </div>
       <div className="text-2xl font-black mt-1">{value}</div>
+      {hint && <div className="text-xs opacity-75 mt-0.5">{hint}</div>}
     </div>
   );
+}
+
+// Nur-lesen-Status für Events mit Essen und für Gäste.
+function StatusBadge({ status }: { status: AttendanceStatus }) {
+  const { cls, icon: Icon, label } = {
+    accepted: { cls: "bg-primary text-primary-foreground shadow-glow", icon: Check, label: "Zugesagt" },
+    declined: { cls: "bg-destructive text-destructive-foreground", icon: X, label: "Abgesagt" },
+    pending: { cls: "bg-warning/20 text-warning", icon: Clock, label: "Offen" },
+  }[status];
+  return (
+    <span className={`h-8 px-2.5 rounded-md text-xs font-semibold inline-flex items-center gap-1 shrink-0 ${cls}`}>
+      <Icon className="h-3.5 w-3.5" /> {label}
+    </span>
+  );
+}
+
+function MealInfo({ meal }: { meal: Meal | null }) {
+  return meal ? <MealBadge meal={meal} /> : <span className="text-yellow-400">Essen offen</span>;
+}
+
+function initials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
 function StatusPill({ status, onChange }: { status: string; onChange: (s: "accepted" | "declined" | "pending") => void }) {

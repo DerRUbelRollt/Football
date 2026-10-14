@@ -42,7 +42,7 @@ public class PlayerController : ControllerBase
         var upcoming = await _ctx.Events.Include(e => e.Group).Where(e => groupIds.Contains(e.GroupId) && e.EventAt >= now).OrderBy(e => e.EventAt).ToListAsync();
         var history = await _ctx.Events.Include(e => e.Group).Where(e => groupIds.Contains(e.GroupId) && e.EventAt < now).OrderByDescending(e => e.EventAt).Take(50).ToListAsync();
 
-        var upList = upcoming.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, opponent = e.Opponent, home_away = e.HomeAway, location = e.Location, meeting_point = e.MeetingPoint, event_at = e.EventAt, description = e.Description, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { id = a.Id, status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
+        var upList = upcoming.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, opponent = e.Opponent, home_away = e.HomeAway, location = e.Location, meeting_point = e.MeetingPoint, event_at = e.EventAt, description = e.Description, max_guests = e.MaxGuests, with_food = e.WithFood, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).ToList().Select(a => new { id = a.Id, status = a.Status, player_id = a.PlayerId, meal = a.Meal, guests = a.GuestEntries() }).ToList() }).ToList();
         var histList = history.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, event_at = e.EventAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
 
         var firstMembership = player.GroupMemberships.OrderBy(m => m.GroupId).FirstOrDefault();
@@ -59,6 +59,9 @@ public class PlayerController : ControllerBase
 
         var ev = await _ctx.Events.FirstOrDefaultAsync(e => e.Id == req.EventId);
         if (ev == null) return NotFound(new { error = "Ereignis nicht gefunden" });
+        // Nur für Ereignisse der eigenen Mannschaft(en) zu- oder absagen.
+        if (!await _ctx.PlayerGroupMemberships.AnyAsync(m => m.PlayerId == player.Id && m.GroupId == ev.GroupId))
+            return Unauthorized(new { error = "Nicht deine Mannschaft" });
 
         // Enforce deadline for training events: players may only respond until 13:00 on the event day.
         if (ev.EventType == "training")
@@ -70,18 +73,39 @@ public class PlayerController : ControllerBase
             }
         }
 
+        // Gäste und Essen nur bei Zusage zu einem Event; bei Absage/offen oder anderen Typen werden sie entfernt.
+        var guests = new List<GuestInput>();
+        if (ev.EventType == "event" && req.Status == "accepted")
+        {
+            guests = (req.Guests ?? new List<GuestInput>())
+                .Select(g => g with { Name = (g.Name ?? "").Trim() })
+                .Where(g => g.Name.Length > 0)
+                .Select(g => g.Name.Length > 80 ? g with { Name = g.Name[..80] } : g)
+                .ToList();
+            if (guests.Count > ev.MaxGuests)
+            {
+                return BadRequest(new { error = ev.MaxGuests == 0 ? "Bei diesem Event sind keine Gäste erlaubt" : $"Maximal {ev.MaxGuests} Gäste erlaubt" });
+            }
+            if (ev.WithFood)
+            {
+                if (!Attendance.Meals.Contains(req.Meal)) return BadRequest(new { error = "Bitte wähle dein Essen" });
+                var missing = guests.FirstOrDefault(g => !Attendance.Meals.Contains(g.Meal));
+                if (missing != null) return BadRequest(new { error = $"Bitte wähle ein Essen für {missing.Name}" });
+            }
+        }
+
         var att = await _ctx.Attendances.FirstOrDefaultAsync(a => a.EventId == req.EventId && a.PlayerId == player.Id);
         if (att == null)
         {
-            att = new Attendance { EventId = req.EventId, PlayerId = player.Id, Status = req.Status, UpdatedAt = DateTime.UtcNow };
+            att = new Attendance { EventId = req.EventId, PlayerId = player.Id, UpdatedAt = DateTime.UtcNow };
             _ctx.Attendances.Add(att);
         }
-        else
-        {
-            att.Status = req.Status;
-            att.UpdatedAt = DateTime.UtcNow;
-            _ctx.Attendances.Update(att);
-        }
+        var withMeals = ev.EventType == "event" && ev.WithFood && req.Status == "accepted";
+        att.Status = req.Status;
+        att.Guests = guests.Select(g => g.Name).ToList();
+        att.Meal = withMeals ? req.Meal : null;
+        att.GuestMeals = withMeals ? guests.Select(g => g.Meal!).ToList() : new();
+        att.UpdatedAt = DateTime.UtcNow;
         await _ctx.SaveChangesAsync();
         return Ok(new { ok = true });
     }
@@ -241,5 +265,6 @@ public class PlayerController : ControllerBase
 public record PlayerPenaltyRequest(string ManagerCode, string Code, decimal Amount, int CrateAmount = 0);
 public record ManagerCodeRequest(string ManagerCode);
 public record CodeRequest(string Code);
-public record AttendanceRequest(string Code, int EventId, string Status);
+public record AttendanceRequest(string Code, int EventId, string Status, string? Meal = null, List<GuestInput>? Guests = null);
+public record GuestInput(string Name, string? Meal);
 public record PlayerEventResultRequest(string Code, int EventId, int? HomeScore, int? AwayScore);
