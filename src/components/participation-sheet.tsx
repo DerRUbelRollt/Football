@@ -1,9 +1,10 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
 import type { EventGuest, Meal, PlayerUpcomingEvent } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { MealPicker } from "@/components/meal-picker";
+import { useVisualViewport } from "@/hooks/use-visual-viewport";
 import { Check, UserPlus, Utensils, X } from "lucide-react";
 
 type GuestRow = { id: number; name: string; meal: Meal | null };
@@ -35,6 +36,36 @@ export function ParticipationSheet({
   );
   const [focusId, setFocusId] = useState<number | null>(null);
 
+  // Tastatur-bewusstes Sheet: Geht beim Tippen die Bildschirmtastatur auf, fährt das Sheet an die
+  // Decke und füllt genau den sichtbaren Bereich darüber (Kopf oben fest, Speichern direkt über der
+  // Tastatur). Es bleibt bis zum Schließen oben, damit beim Tippen auf die Essens-Buttons – die
+  // Tastatur geht dabei zu – nichts springt. vaul schiebt das Sheet dafür nicht selbst hoch
+  // (repositionInputs={false}); zusammen mit dem Hochschieben durch iOS landete es sonst oberhalb
+  // des Bildschirms.
+  const viewport = useVisualViewport();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [typingIn, setTypingIn] = useState<HTMLElement | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (typingIn && viewport.keyboardOpen) setExpanded(true);
+  }, [typingIn, viewport.keyboardOpen]);
+
+  // Den Gast, dessen Namen man gerade tippt, samt Essens-Buttons direkt unter den Kopf scrollen.
+  useEffect(() => {
+    const body = formRef.current;
+    if (!expanded || !typingIn || !body) return;
+    const offset = typingIn.getBoundingClientRect().top - body.getBoundingClientRect().top;
+    body.scrollTo({ top: body.scrollTop + offset - 8, behavior: "smooth" });
+  }, [expanded, typingIn, viewport.height]);
+
+  const onFieldFocus = (ev: FocusEvent<HTMLFormElement>) => {
+    if (ev.target instanceof HTMLInputElement) setTypingIn(ev.target.closest<HTMLElement>("[data-guest-row]") ?? ev.target);
+  };
+  const onFieldBlur = (ev: FocusEvent<HTMLFormElement>) => {
+    if (ev.target instanceof HTMLInputElement) setTypingIn(null);
+  };
+
   const updateGuest = (id: number, patch: Partial<GuestRow>) =>
     setGuests((gs) => gs.map((g) => (g.id === id ? { ...g, ...patch } : g)));
   const addGuest = () => {
@@ -63,8 +94,11 @@ export function ParticipationSheet({
   };
 
   return (
-    <Drawer open={open} onOpenChange={(o) => { if (!o) onClose(); }} shouldScaleBackground={false}>
-      <DrawerContent className="max-h-[92dvh] sm:max-w-lg sm:mx-auto">
+    <Drawer open={open} onOpenChange={(o) => { if (!o) onClose(); }} shouldScaleBackground={false} repositionInputs={false}>
+      <DrawerContent
+        className="max-h-[92dvh] sm:max-w-lg sm:mx-auto"
+        style={expanded ? { top: viewport.offsetTop, bottom: "auto", height: viewport.height, maxHeight: "none", marginTop: 0 } : undefined}
+      >
         <DrawerHeader className="text-left">
           <DrawerTitle>{current ? "Zusage bearbeiten" : "Deine Zusage"}</DrawerTitle>
           <DrawerDescription className="flex flex-wrap items-center gap-x-2">
@@ -73,7 +107,8 @@ export function ParticipationSheet({
           </DrawerDescription>
         </DrawerHeader>
 
-        <form id="participation-form" onSubmit={submit} className="flex-1 overflow-y-auto px-4 pb-2 space-y-5">
+        <form id="participation-form" ref={formRef} onSubmit={submit} onFocus={onFieldFocus} onBlur={onFieldBlur}
+          className="flex-1 overflow-y-auto px-4 pb-2 space-y-5">
           {withFood && (
             <section className="space-y-2">
               <h3 className="text-sm font-semibold">Was isst du?</h3>
@@ -90,13 +125,16 @@ export function ParticipationSheet({
                 <span className="text-xs text-muted-foreground">{max > 0 ? `bis zu ${max} ${guestWord}` : "keine Gäste mehr erlaubt"}</span>
               </div>
               {guests.map((g, i) => (
-                <div key={g.id} className="space-y-2 rounded-xl border border-border p-3">
+                <div key={g.id} data-guest-row className="space-y-2 rounded-xl border border-border p-3">
                   <div className="flex gap-2">
+                    {/* "Fertig" auf der Tastatur schließt nur die Tastatur, statt die Zusage abzuschicken. */}
                     <Input
                       value={g.name}
                       maxLength={80}
                       placeholder={`Name Gast ${i + 1}`}
                       autoFocus={g.id === focusId}
+                      enterKeyHint="done"
+                      onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); ev.currentTarget.blur(); } }}
                       onChange={(ev) => updateGuest(g.id, { name: ev.target.value })}
                     />
                     <Button type="button" variant="outline" size="icon" className="shrink-0" title="Gast entfernen"
