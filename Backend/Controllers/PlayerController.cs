@@ -42,7 +42,7 @@ public class PlayerController : ControllerBase
         var upcoming = await _ctx.Events.Include(e => e.Group).Where(e => groupIds.Contains(e.GroupId) && e.EventAt >= now).OrderBy(e => e.EventAt).ToListAsync();
         var history = await _ctx.Events.Include(e => e.Group).Where(e => groupIds.Contains(e.GroupId) && e.EventAt < now).OrderByDescending(e => e.EventAt).Take(50).ToListAsync();
 
-        var upList = upcoming.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, opponent = e.Opponent, home_away = e.HomeAway, location = e.Location, meeting_point = e.MeetingPoint, event_at = e.EventAt, description = e.Description, max_guests = e.MaxGuests, with_food = e.WithFood, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).ToList().Select(a => new { id = a.Id, status = a.Status, player_id = a.PlayerId, meal = a.Meal, guests = a.GuestEntries() }).ToList() }).ToList();
+        var upList = upcoming.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, opponent = e.Opponent, home_away = e.HomeAway, location = e.Location, meeting_point = e.MeetingPoint, event_at = e.EventAt, description = e.Description, max_guests = e.MaxGuests, with_food = e.WithFood, deadline_at = e.DeadlineAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).ToList().Select(a => new { id = a.Id, status = a.Status, player_id = a.PlayerId, meal = a.Meal, guests = a.GuestEntries() }).ToList() }).ToList();
         var histList = history.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, event_at = e.EventAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
 
         var firstMembership = player.GroupMemberships.OrderBy(m => m.GroupId).FirstOrDefault();
@@ -71,6 +71,11 @@ public class PlayerController : ControllerBase
             {
                 return BadRequest(new { error = "Deadline erreicht" });
             }
+        }
+        // Events können eine eigene Deadline haben; danach sind Zu-/Absage, Gäste und Essen fest.
+        if (ev.EventType == "event" && ev.DeadlineAt is { } eventDeadline && DateTime.UtcNow >= eventDeadline)
+        {
+            return BadRequest(new { error = "Deadline erreicht" });
         }
 
         // Gäste und Essen nur bei Zusage zu einem Event; bei Absage/offen oder anderen Typen werden sie entfernt.

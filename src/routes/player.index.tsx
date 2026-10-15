@@ -164,9 +164,13 @@ function PlayerHome() {
                 const usesSheet = isEvent && (e.with_food || e.max_guests > 0 || guests.length > 0);
                 // "Mit Essen" kann nachträglich eingeschaltet werden – dann fehlt die Wahl noch.
                 const needsMeal = e.with_food && accepted && !meal;
-                const deadline = new Date(e.event_at);
-                deadline.setHours(13, 0, 0, 0);
-                const isDeadlinePassed = e.event_type === "training" && Date.now() >= deadline.getTime();
+                // Trainings: Antwortfrist 13:00 am Trainingstag. Events: optionale Deadline des Trainers.
+                const trainingDeadline = new Date(e.event_at);
+                trainingDeadline.setHours(13, 0, 0, 0);
+                const eventDeadline = isEvent && e.deadline_at ? new Date(e.deadline_at) : null;
+                const isDeadlinePassed = e.event_type === "training"
+                  ? Date.now() >= trainingDeadline.getTime()
+                  : !!eventDeadline && Date.now() >= eventDeadline.getTime();
                 return (
                   <motion.div
                     key={e.id}
@@ -178,8 +182,15 @@ function PlayerHome() {
                     <div className="flex items-start gap-4">
                       <EventTypeIcon type={e.event_type} className="h-12 w-12 rounded-xl" iconClassName="h-5 w-5" />
                       <div className="min-w-0 flex-1">
-                        <div className={`text-xs uppercase tracking-wider font-medium ${isEvent ? "text-yellow-400" : "text-muted-foreground"}`}>
-                          {eventTypeLabel(e)}
+                        <div className="flex items-baseline justify-between gap-2">
+                          <div className={`text-xs uppercase tracking-wider font-medium ${isEvent ? "text-yellow-400" : "text-muted-foreground"}`}>
+                            {eventTypeLabel(e)}
+                          </div>
+                          {eventDeadline && (
+                            <span className="text-[11px] font-semibold text-destructive whitespace-nowrap">
+                              Deadline: {format(eventDeadline, "dd.MM HH:mm")}
+                            </span>
+                          )}
                         </div>
                         <div className="font-bold text-lg mt-0.5">{e.title}{e.opponent ? `` : ""}</div>
                         <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-sm text-muted-foreground">
@@ -215,11 +226,13 @@ function PlayerHome() {
                           <AcceptChip key={gi} label={`${g.name} (Gast)`} meal={e.with_food ? g.meal : null} />
                         ))}
                         {needsMeal ? (
-                          <Button size="sm" className="h-7 px-2 text-xs bg-yellow-400/15 text-yellow-400 hover:bg-yellow-400/25" onClick={() => openSheet(e)}>
+                          <Button size="sm" className="h-7 px-2 text-xs bg-yellow-400/15 text-yellow-400 hover:bg-yellow-400/25" onClick={() => openSheet(e)}
+                            disabled={isDeadlinePassed} title={isDeadlinePassed ? "Antwortfrist (Deadline) überschritten" : undefined}>
                             <Utensils className="h-3.5 w-3.5 mr-1" /> Bitte Essen wählen
                           </Button>
                         ) : (
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openSheet(e)}>
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openSheet(e)}
+                            disabled={isDeadlinePassed} title={isDeadlinePassed ? "Antwortfrist (Deadline) überschritten" : undefined}>
                             <Pencil className="h-3.5 w-3.5 mr-1" /> Zusage bearbeiten
                           </Button>
                         )}

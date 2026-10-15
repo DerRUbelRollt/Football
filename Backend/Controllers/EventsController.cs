@@ -56,6 +56,9 @@ public class EventsController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(row.Title)) return BadRequest(new { error = "Titel ist erforderlich" });
             if (row.EventType != "training" && row.EventType != "game" && row.EventType != "event") return BadRequest(new { error = "Ungültiger Ereignistyp" });
+            // Deadline gibt es nur bei Events; sie darf nicht nach dem Beginn liegen.
+            var deadline = row.EventType == "event" ? row.DeadlineAt?.ToUniversalTime() : null;
+            if (deadline > row.EventAt.ToUniversalTime()) return BadRequest(new { error = DeadlineAfterStartError });
 
             var ev = new Event
             {
@@ -69,6 +72,7 @@ public class EventsController : ControllerBase
                 Description = string.IsNullOrWhiteSpace(row.Description) ? null : row.Description.Trim(),
                 MaxGuests = row.EventType == "event" ? ClampGuests(row.MaxGuests) : 0,
                 WithFood = row.EventType == "event" && (row.WithFood ?? false),
+                DeadlineAt = deadline,
                 GroupId = row.GroupId
             };
             _ctx.Events.Add(ev);
@@ -106,6 +110,7 @@ public class EventsController : ControllerBase
             description = e.Description,
             max_guests = e.MaxGuests,
             with_food = e.WithFood,
+            deadline_at = e.DeadlineAt,
             group_id = e.GroupId,
             groups = e.Group == null ? null : new { name = e.Group.Name }
         });
@@ -135,6 +140,9 @@ public class EventsController : ControllerBase
         {
             if (req.MaxGuests is int maxGuests) e.MaxGuests = ClampGuests(maxGuests);
             if (req.WithFood is bool withFood) e.WithFood = withFood;
+            // Die Deadline wird immer übernommen – ein leeres Datum im Formular heißt: keine Deadline.
+            e.DeadlineAt = req.DeadlineAt?.ToUniversalTime();
+            if (e.DeadlineAt > e.EventAt) return BadRequest(new { error = DeadlineAfterStartError });
         }
 
         if (req.GroupId != e.GroupId)
@@ -216,6 +224,8 @@ public class EventsController : ControllerBase
     }
 
     private static int ClampGuests(int? maxGuests) => Math.Clamp(maxGuests ?? 0, 0, 20);
+
+    private const string DeadlineAfterStartError = "Die Deadline muss vor dem Beginn des Events liegen";
 }
 
 public record CreateEventRequest(
@@ -229,7 +239,8 @@ public record CreateEventRequest(
     string? Description,
     int GroupId,
     int? MaxGuests = null,
-    bool? WithFood = null);
+    bool? WithFood = null,
+    DateTime? DeadlineAt = null);
 
 public record UpdateEventRequest(
     string Title,
@@ -241,6 +252,7 @@ public record UpdateEventRequest(
     string? Description,
     int GroupId,
     int? MaxGuests = null,
-    bool? WithFood = null);
+    bool? WithFood = null,
+    DateTime? DeadlineAt = null);
 
 public record SetResultRequest(int? HomeScore, int? AwayScore);

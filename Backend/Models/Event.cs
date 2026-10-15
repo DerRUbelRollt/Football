@@ -17,6 +17,8 @@ public class Event
     public int MaxGuests { get; set; }
     // Nur bei "event": Spieler wählen bei der Zusage ihr Essen (und das ihrer Gäste).
     public bool WithFood { get; set; }
+    // Nur bei "event", optional: bis wann Spieler zu- oder absagen bzw. ändern können.
+    public DateTime? DeadlineAt { get; set; }
     public int GroupId { get; set; }
     public Group? Group { get; set; }
 }

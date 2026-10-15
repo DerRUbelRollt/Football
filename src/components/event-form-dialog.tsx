@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { NumberField } from "@/components/number-field";
 import { Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { format, isValid, parse, subMinutes } from "date-fns";
@@ -22,6 +23,12 @@ const HOME_LOCATION = "Neunkircher Str. 7A, 66333 Völklingen";
 
 const DEFAULT_TIME = "18:00";
 const DEFAULT_MAX_GUESTS = 1;
+const DEFAULT_DEADLINE_TIME = "23:59";
+
+// Safari am iPhone gibt Datums-/Zeitfeldern eine eigene Mindestbreite und ignoriert die
+// Spaltenbreite – auf schmalen Handys lief das Datum dadurch ins Uhrzeitfeld. Ohne native
+// Darstellung passen sie sich der Spalte an; den Wert linksbündig wie bei den anderen Feldern.
+const DATE_TIME_INPUT = "appearance-none min-w-0 [&::-webkit-date-and-time-value]:text-left";
 
 // Bei Spielen ist der Treffpunkt eine Uhrzeit und liegt automatisch 1 Stunde 15 Minuten
 // vor Spielbeginn. Bei Trainings bleibt er ein freies Textfeld.
@@ -34,7 +41,8 @@ const meetingTimeFor = (time: string) => {
 
 // Dialog zum Erstellen und Bearbeiten von Ereignissen. Beim Bearbeiten ist der Typ fest
 // und die wöchentliche Wiederholung entfällt. Events (Vereinsfeiern) haben keinen Treffpunkt,
-// dafür eine Obergrenze, wie viele Gäste jeder Spieler mitbringen darf, und optional Essen.
+// dafür eine Obergrenze, wie viele Gäste jeder Spieler mitbringen darf, optional Essen und
+// optional eine Deadline, bis zu der Spieler zu- oder absagen können.
 export function EventFormDialog(props: Props) {
   const isEdit = props.mode === "edit";
   const [open, setOpen] = useState(false);
@@ -52,6 +60,8 @@ export function EventFormDialog(props: Props) {
   const [weeks, setWeeks] = useState(4);
   const [maxGuests, setMaxGuests] = useState(DEFAULT_MAX_GUESTS);
   const [withFood, setWithFood] = useState(false);
+  const [deadlineDate, setDeadlineDate] = useState("");
+  const [deadlineTime, setDeadlineTime] = useState(DEFAULT_DEADLINE_TIME);
 
   const groupsQ = useQuery({
     queryKey: ["groups"],
@@ -77,6 +87,10 @@ export function EventFormDialog(props: Props) {
       setDesc(e.description ?? "");
       setMaxGuests(e.event_type === "event" ? e.max_guests : DEFAULT_MAX_GUESTS);
       setWithFood(e.event_type === "event" && e.with_food);
+      // Deadline in Ortszeit anzeigen; ohne Deadline bleibt das Datum leer.
+      const deadline = e.event_type === "event" && e.deadline_at ? new Date(e.deadline_at) : null;
+      setDeadlineDate(deadline ? format(deadline, "yyyy-MM-dd") : "");
+      setDeadlineTime(deadline ? format(deadline, "HH:mm") : DEFAULT_DEADLINE_TIME);
     }
     setOpen(next);
   };
@@ -121,6 +135,9 @@ export function EventFormDialog(props: Props) {
           groupId: Number(groupId),
           maxGuests: type === "event" ? Math.max(0, Math.min(20, maxGuests)) : null,
           withFood: type === "event" ? withFood : null,
+          deadlineAt: type === "event" && deadlineDate
+            ? new Date(`${deadlineDate}T${deadlineTime || DEFAULT_DEADLINE_TIME}`).toISOString()
+            : null,
         };
       });
       if (props.mode === "edit") {
@@ -140,6 +157,7 @@ export function EventFormDialog(props: Props) {
         setMeeting(type === "game" ? meetingTimeFor(time) : "");
         setLocation(type === "game" && homeAway === "home" ? HOME_LOCATION : "");
         setRecurring(false); setWeeks(4); setMaxGuests(DEFAULT_MAX_GUESTS); setWithFood(false);
+        setDeadlineDate(""); setDeadlineTime(DEFAULT_DEADLINE_TIME);
       }
       setOpen(false);
       props.onSaved();
@@ -156,8 +174,8 @@ export function EventFormDialog(props: Props) {
           <Button className="shadow-glow"><Plus className="h-4 w-4 mr-1" /> Ereignis</Button>
         )}
       </DialogTrigger>
-      {/* Auf dem Handy mit Rand und scrollbar – das Formular ist länger als der Bildschirm. */}
-      <DialogContent className="max-w-lg w-[calc(100%-2rem)] rounded-xl max-h-[90dvh] overflow-y-auto">
+      {/* Auf dem Handy mit Rand, weniger Innenabstand und scrollbar – das Formular ist länger als der Bildschirm. */}
+      <DialogContent className="max-w-lg w-[calc(100%-2rem)] rounded-xl max-h-[90dvh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader><DialogTitle>{isEdit ? "Ereignis bearbeiten" : "Neues Ereignis"}</DialogTitle></DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); m.mutate(); }} className="space-y-4">
           <div className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1">
@@ -209,11 +227,11 @@ export function EventFormDialog(props: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Datum</Label>
-              <Input type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className={DATE_TIME_INPUT} />
             </div>
             <div className="space-y-2">
               <Label>Uhrzeit</Label>
-              <Input type="time" required value={time} onChange={(e) => changeTime(e.target.value)} />
+              <Input type="time" required value={time} onChange={(e) => changeTime(e.target.value)} className={DATE_TIME_INPUT} />
             </div>
           </div>
           {!isEdit && type === "training" && (
@@ -225,13 +243,7 @@ export function EventFormDialog(props: Props) {
               {recurring && (
                 <div className="space-y-2">
                   <Label>Anzahl Wochen</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={52}
-                    value={weeks}
-                    onChange={(e) => setWeeks(parseInt(e.target.value) || 1)}
-                  />
+                  <NumberField min={1} max={52} value={weeks} onChange={setWeeks} />
                   <p className="text-xs text-muted-foreground">
                     Erstellt {Math.max(1, Math.min(52, weeks))} Trainings am selben Wochentag & Uhrzeit.
                   </p>
@@ -249,13 +261,8 @@ export function EventFormDialog(props: Props) {
                 </div>
                 <div className="space-y-2">
                   <Label>Max. Gäste pro Spieler</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={20}
-                    value={maxGuests}
-                    onChange={(e) => setMaxGuests(parseInt(e.target.value) || 0)}
-                  />
+                  <NumberField min={0} max={20} value={maxGuests} onChange={setMaxGuests}
+                    optionLabel={(n) => (n === 0 ? "0 (keine)" : String(n))} />
                 </div>
               </div>
               <div className="space-y-2">
@@ -274,6 +281,23 @@ export function EventFormDialog(props: Props) {
                   </p>
                 )}
               </div>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Deadline Datum</Label>
+                    <Input type="date" value={deadlineDate} max={date || undefined}
+                      onChange={(e) => setDeadlineDate(e.target.value)} className={DATE_TIME_INPUT} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Deadline Uhrzeit</Label>
+                    <Input type="time" value={deadlineTime}
+                      onChange={(e) => setDeadlineTime(e.target.value)} className={DATE_TIME_INPUT} />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Optional: Bis dahin können Spieler zu- oder absagen. Ohne Datum gibt es keine Deadline.
+                </p>
+              </div>
             </>
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -283,7 +307,7 @@ export function EventFormDialog(props: Props) {
               </div>
               <div className="space-y-2">
                 <Label>Treffpunkt</Label>
-                <Input type={type === "game" ? "time" : "text"} value={meeting} onChange={(e) => setMeeting(e.target.value)} placeholder="Vereinsheim" />
+                <Input type={type === "game" ? "time" : "text"} value={meeting} onChange={(e) => setMeeting(e.target.value)} placeholder="Vereinsheim" className={DATE_TIME_INPUT} />
               </div>
             </div>
           )}

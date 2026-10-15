@@ -80,6 +80,9 @@ namespace TeamCompass.Api.Data.Migrations
                     b.Property<int?>("AwayScore")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("DeadlineAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
 

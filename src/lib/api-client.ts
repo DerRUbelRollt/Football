@@ -129,6 +129,7 @@ export interface PlayerUpcomingEvent extends PlayerHistoryEvent {
   description: string | null;
   max_guests: number;
   with_food: boolean;
+  deadline_at: string | null;
 }
 
 export interface PlayerOverview {
@@ -191,6 +192,7 @@ export interface EventDetail extends EventListItem {
   away_score: number | null;
   max_guests: number;
   with_food: boolean;
+  deadline_at: string | null;
 }
 
 export interface NewEvent {
@@ -205,6 +207,7 @@ export interface NewEvent {
   groupId: number;
   maxGuests: number | null;
   withFood: boolean | null;
+  deadlineAt: string | null;
 }
 
 export type EventUpdate = Omit<NewEvent, "eventType">;

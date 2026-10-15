@@ -14,6 +14,7 @@ const eventSchema = z.object({
   groupId: z.coerce.number().int().positive(),
   maxGuests: z.coerce.number().int().min(0).max(20).nullable().optional(),
   withFood: z.boolean().nullable().optional(),
+  deadlineAt: z.string().datetime().nullable().optional(),
 });
 
 const createSchema = z.array(eventSchema).min(1).max(60);

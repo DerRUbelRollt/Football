@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, MapPin, Users, Trash2, Search, Check, X, Clock, Goal, FileDown, type LucideIcon } from "lucide-react";
+import { ArrowLeft, MapPin, Users, Trash2, Search, Check, X, Clock, Goal, FileDown, AlarmClock, type LucideIcon } from "lucide-react";
 import type { EventDetail } from "@/lib/api-client";
 import type { KitColors } from "@/lib/event-pdf";
 import { EventFormDialog } from "@/components/event-form-dialog";
@@ -102,6 +102,9 @@ function EventDetail() {
                   <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {format(new Date(e.event_at), "EEEE, d. MMMM yyyy · HH:mm", { locale: de })} Uhr</span>
                   {e.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {e.location}</span>}
                   <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {e.groups?.name}</span>
+                  {e.event_type === "event" && e.deadline_at && (
+                    <span className="inline-flex items-center gap-1 text-destructive"><AlarmClock className="h-3.5 w-3.5" /> Deadline: {format(new Date(e.deadline_at), "dd.MM HH:mm")}</span>
+                  )}
                 </div>
                 {e.description && <p className="text-sm mt-3">{e.description}</p>}
               </div>
