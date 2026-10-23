@@ -34,6 +34,7 @@ import { Route as ApiPlayerTeamRouteImport } from './routes/api/player.team'
 import { Route as ApiPlayerPenaltyRouteImport } from './routes/api/player.penalty'
 import { Route as ApiPlayerPenaltiesRouteImport } from './routes/api/player.penalties'
 import { Route as ApiPlayerOverviewRouteImport } from './routes/api/player.overview'
+import { Route as ApiPlayerMeetingRouteImport } from './routes/api/player.meeting'
 import { Route as ApiPlayerLoginRouteImport } from './routes/api/player.login'
 import { Route as ApiPlayerEventResultRouteImport } from './routes/api/player.event-result'
 import { Route as ApiPlayerAttendanceRouteImport } from './routes/api/player.attendance'
@@ -178,6 +179,11 @@ const ApiPlayerOverviewRoute = ApiPlayerOverviewRouteImport.update({
   path: '/api/player/overview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlayerMeetingRoute = ApiPlayerMeetingRouteImport.update({
+  id: '/api/player/meeting',
+  path: '/api/player/meeting',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPlayerLoginRoute = ApiPlayerLoginRouteImport.update({
   id: '/api/player/login',
   path: '/api/player/login',
@@ -296,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/event-result': typeof ApiPlayerEventResultRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
+  '/api/player/meeting': typeof ApiPlayerMeetingRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
   '/api/player/penalty': typeof ApiPlayerPenaltyRoute
@@ -337,6 +344,7 @@ export interface FileRoutesByTo {
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/event-result': typeof ApiPlayerEventResultRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
+  '/api/player/meeting': typeof ApiPlayerMeetingRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
   '/api/player/penalty': typeof ApiPlayerPenaltyRoute
@@ -382,6 +390,7 @@ export interface FileRoutesById {
   '/api/player/attendance': typeof ApiPlayerAttendanceRoute
   '/api/player/event-result': typeof ApiPlayerEventResultRoute
   '/api/player/login': typeof ApiPlayerLoginRoute
+  '/api/player/meeting': typeof ApiPlayerMeetingRoute
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
   '/api/player/penalty': typeof ApiPlayerPenaltyRoute
@@ -427,6 +436,7 @@ export interface FileRouteTypes {
     | '/api/player/attendance'
     | '/api/player/event-result'
     | '/api/player/login'
+    | '/api/player/meeting'
     | '/api/player/overview'
     | '/api/player/penalties'
     | '/api/player/penalty'
@@ -468,6 +478,7 @@ export interface FileRouteTypes {
     | '/api/player/attendance'
     | '/api/player/event-result'
     | '/api/player/login'
+    | '/api/player/meeting'
     | '/api/player/overview'
     | '/api/player/penalties'
     | '/api/player/penalty'
@@ -512,6 +523,7 @@ export interface FileRouteTypes {
     | '/api/player/attendance'
     | '/api/player/event-result'
     | '/api/player/login'
+    | '/api/player/meeting'
     | '/api/player/overview'
     | '/api/player/penalties'
     | '/api/player/penalty'
@@ -550,6 +562,7 @@ export interface RootRouteChildren {
   ApiPlayerAttendanceRoute: typeof ApiPlayerAttendanceRoute
   ApiPlayerEventResultRoute: typeof ApiPlayerEventResultRoute
   ApiPlayerLoginRoute: typeof ApiPlayerLoginRoute
+  ApiPlayerMeetingRoute: typeof ApiPlayerMeetingRoute
   ApiPlayerOverviewRoute: typeof ApiPlayerOverviewRoute
   ApiPlayerPenaltiesRoute: typeof ApiPlayerPenaltiesRoute
   ApiPlayerPenaltyRoute: typeof ApiPlayerPenaltyRoute
@@ -735,6 +748,13 @@ declare module '@tanstack/react-router' {
       path: '/api/player/overview'
       fullPath: '/api/player/overview'
       preLoaderRoute: typeof ApiPlayerOverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player/meeting': {
+      id: '/api/player/meeting'
+      path: '/api/player/meeting'
+      fullPath: '/api/player/meeting'
+      preLoaderRoute: typeof ApiPlayerMeetingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/player/login': {
@@ -972,6 +992,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPlayerAttendanceRoute: ApiPlayerAttendanceRoute,
   ApiPlayerEventResultRoute: ApiPlayerEventResultRoute,
   ApiPlayerLoginRoute: ApiPlayerLoginRoute,
+  ApiPlayerMeetingRoute: ApiPlayerMeetingRoute,
   ApiPlayerOverviewRoute: ApiPlayerOverviewRoute,
   ApiPlayerPenaltiesRoute: ApiPlayerPenaltiesRoute,
   ApiPlayerPenaltyRoute: ApiPlayerPenaltyRoute,

@@ -38,15 +38,16 @@ public static class DbInitializer
 
     // Gleicht die Teilnehmer aller kommenden Ereignisse mit der aktuellen Mannschaftsbelegung ab:
     // fehlende Mitglieder werden als "pending" eingetragen, Nicht-Mitglieder entfernt.
-    // Idempotent, vergangene Ereignisse bleiben unverändert.
+    // Idempotent, vergangene Ereignisse bleiben unverändert. Einzelgespräche gehören zu keiner
+    // Mannschaft (nur der gewählte Spieler ist eingetragen) und bleiben deshalb außen vor.
     private static void SyncUpcomingAttendances(AppDbContext ctx)
     {
         var now = DateTime.UtcNow;
 
         var missing = (
             from e in ctx.Events
-            where e.EventAt >= now
-            join m in ctx.PlayerGroupMemberships on e.GroupId equals m.GroupId
+            where e.EventAt >= now && e.EventType != Event.MeetingType
+            join m in ctx.PlayerGroupMemberships on e.GroupId equals (int?)m.GroupId
             where !ctx.Attendances.Any(a => a.EventId == e.Id && a.PlayerId == m.PlayerId)
             select new { EventId = e.Id, m.PlayerId }
         ).ToList();
@@ -57,6 +58,7 @@ public static class DbInitializer
 
         var orphaned = ctx.Attendances
             .Where(a => a.Event!.EventAt >= now
+                && a.Event.EventType != Event.MeetingType
                 && !ctx.PlayerGroupMemberships.Any(m => m.PlayerId == a.PlayerId && m.GroupId == a.Event.GroupId))
             .ToList();
         ctx.Attendances.RemoveRange(orphaned);

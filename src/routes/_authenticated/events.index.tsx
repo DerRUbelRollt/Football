@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { EmptyState } from "./dashboard";
 import { EventTypeIcon } from "@/components/event-type-icon";
+import { MEETING_STATUS_META, formatProposal, isMeetingActive } from "@/lib/meeting";
 
 export const Route = createFileRoute("/_authenticated/events/")({
   head: () => ({ meta: [{ title: "Ereignisse" }] }),
@@ -27,12 +28,15 @@ function EventsPage() {
   });
 
   const now = new Date();
+  // Einzelgespräche sind nach dem ersten Vorschlag bzw. dem gewählten Termin einsortiert (event_at)
+  // und zählen als kommend, bis sie beim Spieler in die Historie rutschen.
   const list = (q.data ?? []).filter((e) => {
-    const isFuture = new Date(e.event_at) >= now;
+    const isFuture = e.event_type === "meeting" ? isMeetingActive(e, now.getTime()) : new Date(e.event_at) >= now;
     if (tab === "upcoming" && !isFuture) return false;
     if (tab === "past" && isFuture) return false;
     const s = search.toLowerCase();
-    return !s || e.title.toLowerCase().includes(s) || (e.opponent ?? "").toLowerCase().includes(s);
+    const playerName = e.player ? `${e.player.first_name} ${e.player.last_name}` : "";
+    return !s || [e.title, e.opponent ?? "", playerName].some((v) => v.toLowerCase().includes(s));
   }).sort((a, b) => tab === "upcoming"
     ? new Date(a.event_at).getTime() - new Date(b.event_at).getTime()
     : new Date(b.event_at).getTime() - new Date(a.event_at).getTime());
@@ -42,7 +46,7 @@ function EventsPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tight">Ereignisse</h1>
-          <p className="text-muted-foreground mt-1">Trainings, Spiele und Events deiner Mannschaften.</p>
+          <p className="text-muted-foreground mt-1">Trainings, Spiele, Events und Einzelgespräche deiner Mannschaften.</p>
         </div>
         <EventFormDialog mode="create" onSaved={() => qc.invalidateQueries({ queryKey: ["events"] })} />
       </div>
@@ -68,13 +72,22 @@ function EventsPage() {
         <div className="grid gap-3">
           {list.map((e) => (
             <Link key={e.id} to="/events/$eventId" params={{ eventId: String(e.id) }} className="card-elevated p-4 flex items-center gap-4 min-w-0 hover:border-primary/50 transition group">
-              <EventTypeIcon type={e.event_type} className="h-12 w-12 rounded-xl" iconClassName="h-5 w-5" />
+              <EventTypeIcon type={e.event_type} status={e.meeting_status} className="h-12 w-12 rounded-xl" iconClassName="h-5 w-5" />
               <div className="min-w-0 flex-1">
                 <div className="font-semibold truncate">{e.title}{e.opponent ? `` : ""}</div>
-                <div className="text-xs text-muted-foreground truncate">
-                  {e.groups?.name} · {format(new Date(e.event_at), "EEE d. MMM yyyy · HH:mm", { locale: de })}
-                  {e.location ? ` · ${e.location}` : ""}
-                </div>
+                {e.event_type === "meeting" && e.meeting_status ? (
+                  <div className="text-xs text-muted-foreground truncate">
+                    {e.player ? `${e.player.first_name} ${e.player.last_name}` : "–"} ·{" "}
+                    <span className={MEETING_STATUS_META[e.meeting_status].text}>{MEETING_STATUS_META[e.meeting_status].label}</span>
+                    {" · "}{e.meeting_status === "confirmed" ? "" : "ab "}{formatProposal(e.event_at, true)}
+                    {e.location ? ` · ${e.location}` : ""}
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground truncate">
+                    {e.groups?.name} · {format(new Date(e.event_at), "EEE d. MMM yyyy · HH:mm", { locale: de })}
+                    {e.location ? ` · ${e.location}` : ""}
+                  </div>
+                )}
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition" />
             </Link>

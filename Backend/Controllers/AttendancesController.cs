@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TeamCompass.Api.Data;
+using TeamCompass.Api.Models;
 using TeamCompass.Api.Services;
 
 namespace TeamCompass.Api.Controllers;
@@ -24,6 +25,8 @@ public class AttendancesController : ControllerBase
         if (att == null) return NotFound(new { error = "Anwesenheit nicht gefunden" });
         // Bei Events mit Essen gehört zur Zusage die Essenswahl – die trifft nur der Spieler selbst.
         if (att.Event?.WithFood == true) return BadRequest(new { error = "Bei Events mit Essen sagen die Spieler selbst zu oder ab" });
+        // Beim Einzelgespräch legt nur der Spieler den Termin fest.
+        if (att.Event?.EventType == Event.MeetingType) return BadRequest(new { error = "Beim Einzelgespräch legt der Spieler den Termin fest" });
 
         att.Status = req.Status;
         // Gäste und Essen gibt es nur bei einer Zusage.

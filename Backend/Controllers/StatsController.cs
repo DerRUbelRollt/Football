@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TeamCompass.Api.Data;
+using TeamCompass.Api.Models;
 using TeamCompass.Api.Services;
 
 namespace TeamCompass.Api.Controllers;
@@ -20,9 +21,10 @@ public class StatsController : ControllerBase
         var now = DateTime.UtcNow;
         var groups = await _ctx.Groups.CountAsync();
         var players = await _ctx.Players.CountAsync();
+        // Einzelgespräche haben im Dashboard ein eigenes Fenster (siehe meetings).
         var upcoming = await _ctx.Events
             .Include(e => e.Group)
-            .Where(e => e.EventAt >= now)
+            .Where(e => e.EventAt >= now && e.EventType != Event.MeetingType)
             .OrderBy(e => e.EventAt)
             .Take(5)
             .Select(e => new
@@ -41,7 +43,32 @@ public class StatsController : ControllerBase
         var accepted = await trainingAttendances.CountAsync(a => a.Status == "accepted");
         var rate = total > 0 ? (int)Math.Round(accepted * 100.0 / total) : 0;
 
-        return Ok(new { groups, players, upcoming, rate });
+        // Aktuelle Einzelgespräche: festgelegte (grün) ganz oben nach gewähltem Termin, dann offene (orange),
+        // dann "Keiner passt" (rot), jeweils nach dem ersten Vorschlag. Ob ein Gespräch noch aktuell ist,
+        // hängt vom letzten Vorschlag ab – das wird im Speicher geprüft (es sind nur wenige Gespräche).
+        var meetingEvents = await _ctx.Events.Include(e => e.Player).Where(e => e.EventType == Event.MeetingType).ToListAsync();
+        var meetingAnswers = await _ctx.Attendances
+            .Where(a => a.Event!.EventType == Event.MeetingType)
+            .Select(a => new { a.EventId, a.Status })
+            .ToListAsync();
+        var meetings = meetingEvents
+            .Select(e => new { Event = e, Status = Event.MeetingStatusOf(meetingAnswers.FirstOrDefault(a => a.EventId == e.Id)?.Status) })
+            .Where(m => now < m.Event.MeetingActiveUntil(m.Status == "confirmed"))
+            .OrderBy(m => m.Status switch { "confirmed" => 0, "open" => 1, _ => 2 })
+            .ThenBy(m => m.Event.EventAt)
+            .Select(m => new
+            {
+                id = m.Event.Id,
+                title = m.Event.Title,
+                location = m.Event.Location,
+                event_at = m.Event.EventAt,
+                proposed_times = m.Event.ProposedTimes,
+                meeting_status = m.Status,
+                player = m.Event.Player == null ? null : new { first_name = m.Event.Player.FirstName, last_name = m.Event.Player.LastName }
+            })
+            .ToList();
+
+        return Ok(new { groups, players, upcoming, rate, meetings });
     }
 
     [HttpGet("attendance")]

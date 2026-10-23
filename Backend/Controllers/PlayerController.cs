@@ -39,16 +39,73 @@ public class PlayerController : ControllerBase
 
         var groupIds = player.GroupMemberships.Select(m => m.GroupId).ToList();
         var now = DateTime.UtcNow;
-        var upcoming = await _ctx.Events.Include(e => e.Group).Where(e => groupIds.Contains(e.GroupId) && e.EventAt >= now).OrderBy(e => e.EventAt).ToListAsync();
-        var history = await _ctx.Events.Include(e => e.Group).Where(e => groupIds.Contains(e.GroupId) && e.EventAt < now).OrderByDescending(e => e.EventAt).Take(50).ToListAsync();
+        var upcoming = await _ctx.Events.Include(e => e.Group).Where(e => e.GroupId != null && groupIds.Contains(e.GroupId.Value) && e.EventAt >= now).OrderBy(e => e.EventAt).ToListAsync();
+        var history = await _ctx.Events.Include(e => e.Group).Where(e => e.GroupId != null && groupIds.Contains(e.GroupId.Value) && e.EventAt < now).OrderByDescending(e => e.EventAt).Take(50).ToListAsync();
+
+        // Einzelgespräche gehören direkt zum Spieler. Sie stehen oben in einem eigenen Abschnitt, bis
+        // 1 Stunde nach dem gewählten Termin (ohne Festlegung: nach dem letzten Vorschlag), danach in der Historie.
+        var meetingEvents = await _ctx.Events.Where(e => e.EventType == Event.MeetingType && e.PlayerId == player.Id).OrderBy(e => e.EventAt).ToListAsync();
+        var meetingAnswers = await _ctx.Attendances
+            .Where(a => a.PlayerId == player.Id && a.Event!.EventType == Event.MeetingType)
+            .Select(a => new { a.EventId, a.Status })
+            .ToListAsync();
+        var meetings = meetingEvents
+            .Select(e => new { Event = e, Answer = meetingAnswers.FirstOrDefault(a => a.EventId == e.Id)?.Status ?? "pending" })
+            .ToList();
+        bool IsActive(Event e, string answer) => now < e.MeetingActiveUntil(answer == "accepted");
 
         var upList = upcoming.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, opponent = e.Opponent, home_away = e.HomeAway, location = e.Location, meeting_point = e.MeetingPoint, event_at = e.EventAt, description = e.Description, max_guests = e.MaxGuests, with_food = e.WithFood, deadline_at = e.DeadlineAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).ToList().Select(a => new { id = a.Id, status = a.Status, player_id = a.PlayerId, meal = a.Meal, guests = a.GuestEntries() }).ToList() }).ToList();
-        var histList = history.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, event_at = e.EventAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { status = a.Status, player_id = a.PlayerId }).ToList() }).ToList();
+        var meetList = meetings.Where(m => IsActive(m.Event, m.Answer)).Select(m => new { id = m.Event.Id, event_type = m.Event.EventType, title = m.Event.Title, location = m.Event.Location, description = m.Event.Description, event_at = m.Event.EventAt, proposed_times = m.Event.ProposedTimes, meeting_status = Event.MeetingStatusOf(m.Answer) }).ToList();
+        var histList = history.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, event_at = e.EventAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { status = a.Status, player_id = a.PlayerId }).ToList() })
+            .Concat(meetings.Where(m => !IsActive(m.Event, m.Answer)).Select(m => new { id = m.Event.Id, event_type = m.Event.EventType, title = m.Event.Title, event_at = m.Event.EventAt, attendances = new[] { new { status = m.Answer, player_id = player.Id } }.ToList() }))
+            .OrderByDescending(h => h.event_at)
+            .Take(50)
+            .ToList();
 
         var firstMembership = player.GroupMemberships.OrderBy(m => m.GroupId).FirstOrDefault();
         var p = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = firstMembership?.GroupId ?? 0, player_penalty = player.PlayerPenalty, beer_crates = player.BeerCrates, penalty_manager = player.PenaltyManager, groups = player.GroupMemberships.Select(m => new { name = m.Group!.Name }).ToList() };
 
-        return Ok(new { player = p, upcoming = upList, history = histList });
+        return Ok(new { player = p, upcoming = upList, meetings = meetList, history = histList });
+    }
+
+    // Einzelgespräch: der Spieler legt einen der vorgeschlagenen Termine fest (danach unveränderlich)
+    // oder meldet "Keiner passt" – dann wartet er, bis der Trainer neue Termine einträgt.
+    [HttpPost("meeting")]
+    public async Task<IActionResult> AnswerMeeting([FromBody] MeetingAnswerRequest req)
+    {
+        var player = await _ctx.Players.FirstOrDefaultAsync(p => p.PlayerCode == req.Code.ToUpper());
+        if (player == null) return NotFound(new { error = "Ungültige Spieler-ID" });
+
+        var ev = await _ctx.Events.FirstOrDefaultAsync(e => e.Id == req.EventId && e.EventType == Event.MeetingType);
+        if (ev == null) return NotFound(new { error = "Einzelgespräch nicht gefunden" });
+        if (ev.PlayerId != player.Id) return Unauthorized(new { error = "Nicht dein Einzelgespräch" });
+
+        var att = await _ctx.Attendances.FirstOrDefaultAsync(a => a.EventId == ev.Id && a.PlayerId == player.Id);
+        if (att == null)
+        {
+            att = new Attendance { EventId = ev.Id, PlayerId = player.Id };
+            _ctx.Attendances.Add(att);
+        }
+        if (att.Status == "accepted") return Conflict(new { error = "Der Termin ist bereits festgelegt" });
+        if (att.Status == "declined") return BadRequest(new { error = "Du hast „Keiner passt“ gemeldet – warte auf neue Termine vom Trainer" });
+
+        var now = DateTime.UtcNow;
+        if (req.NoneFits)
+        {
+            att.Status = "declined";
+        }
+        else
+        {
+            if (req.ChosenAt is not DateTime chosenAt) return BadRequest(new { error = "Bitte wähle einen Termin" });
+            var chosen = Event.ToMinute(chosenAt.ToUniversalTime());
+            if (!ev.ProposedTimes.Contains(chosen)) return BadRequest(new { error = "Dieser Termin wurde nicht (mehr) vorgeschlagen – bitte neu laden" });
+            if (chosen <= now) return BadRequest(new { error = "Dieser Termin liegt in der Vergangenheit" });
+            att.Status = "accepted";
+            ev.EventAt = chosen;
+        }
+        att.UpdatedAt = now;
+        await _ctx.SaveChangesAsync();
+        return Ok(new { ok = true });
     }
 
     [HttpPost("attendance")]
@@ -59,6 +116,8 @@ public class PlayerController : ControllerBase
 
         var ev = await _ctx.Events.FirstOrDefaultAsync(e => e.Id == req.EventId);
         if (ev == null) return NotFound(new { error = "Ereignis nicht gefunden" });
+        // Beim Einzelgespräch gibt es kein Zu-/Absagen, sondern die Terminwahl (player/meeting).
+        if (ev.EventType == Event.MeetingType) return BadRequest(new { error = "Bitte wähle einen Termin" });
         // Nur für Ereignisse der eigenen Mannschaft(en) zu- oder absagen.
         if (!await _ctx.PlayerGroupMemberships.AnyAsync(m => m.PlayerId == player.Id && m.GroupId == ev.GroupId))
             return Unauthorized(new { error = "Nicht deine Mannschaft" });
@@ -154,7 +213,7 @@ public class PlayerController : ControllerBase
         if (ev.EventType != "game") return BadRequest(new { error = "Ergebnis nur bei Spielen möglich" });
 
         var groupIds = player.GroupMemberships.Select(m => m.GroupId).ToList();
-        if (!groupIds.Contains(ev.GroupId)) return Unauthorized(new { error = "Nicht deine Mannschaft" });
+        if (ev.GroupId is not int eventGroupId || !groupIds.Contains(eventGroupId)) return Unauthorized(new { error = "Nicht deine Mannschaft" });
 
         ev.HomeScore = req.HomeScore;
         ev.AwayScore = req.AwayScore;
@@ -175,7 +234,7 @@ public class PlayerController : ControllerBase
         var attendanceRaw = await _ctx.Attendances
             // Nur Trainings zaehlen - die Anwesenheits-Uebersicht der Mannschaft soll sich
             // ausschliesslich auf Trainingsbeteiligung beziehen, nicht auf Spiele.
-            .Where(a => groupIds.Contains(a.Event!.GroupId) && a.Event!.EventAt < now && a.Event!.EventType == "training")
+            .Where(a => a.Event!.GroupId != null && groupIds.Contains(a.Event.GroupId.Value) && a.Event!.EventAt < now && a.Event!.EventType == "training")
             .GroupBy(a => new { a.PlayerId, First = a.Player!.FirstName, Last = a.Player.LastName })
             .Select(g => new
             {
@@ -209,7 +268,7 @@ public class PlayerController : ControllerBase
         // danach (grosszuegiger Puffer fuer Spieldauer + Nachbereitung), damit dort schon vorab/live ein
         // Ergebnis eingetragen werden kann. Ausserhalb dieses Fensters zaehlt ein Spiel als "vergangen".
         var currentGame = await _ctx.Events
-            .Where(e => groupIds.Contains(e.GroupId) && e.EventType == "game"
+            .Where(e => e.GroupId != null && groupIds.Contains(e.GroupId.Value) && e.EventType == "game"
                 && e.EventAt <= now.AddHours(-1.25) && e.EventAt > now.AddHours(-3.25))
             .OrderBy(e => e.EventAt)
             .Select(e => new
@@ -226,7 +285,7 @@ public class PlayerController : ControllerBase
 
         // Fuer die Mannschaft-Ansicht reichen die letzten 5 vergangenen Spiele (Formkurve + Liste).
         var pastGames = await _ctx.Events
-            .Where(e => groupIds.Contains(e.GroupId) && e.EventType == "game" && e.EventAt <= now.AddHours(-3))
+            .Where(e => e.GroupId != null && groupIds.Contains(e.GroupId.Value) && e.EventType == "game" && e.EventAt <= now.AddHours(-3))
             .OrderByDescending(e => e.EventAt)
             .Take(5)
             .Select(e => new
@@ -272,4 +331,5 @@ public record ManagerCodeRequest(string ManagerCode);
 public record CodeRequest(string Code);
 public record AttendanceRequest(string Code, int EventId, string Status, string? Meal = null, List<GuestInput>? Guests = null);
 public record GuestInput(string Name, string? Meal);
+public record MeetingAnswerRequest(string Code, int EventId, DateTime? ChosenAt = null, bool NoneFits = false);
 public record PlayerEventResultRequest(string Code, int EventId, int? HomeScore, int? AwayScore);

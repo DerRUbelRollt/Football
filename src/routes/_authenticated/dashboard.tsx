@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ComponentProps } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, type EventListItem } from "@/lib/api-client";
+import { api, type DashboardMeeting, type EventListItem } from "@/lib/api-client";
 import { motion } from "framer-motion";
 import { Users, CalendarDays, Trophy, Activity, ArrowRight, Plus, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EventTypeIcon } from "@/components/event-type-icon";
+import { MEETING_STATUS_META, formatProposal } from "@/lib/meeting";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -90,16 +91,56 @@ function Dashboard() {
             </ul>
           )}
         </div>
-        <div className="card-elevated p-6">
-          <h2 className="text-lg font-bold mb-4">Schnellzugriff</h2>
-          <div className="grid gap-2">
-            <QuickLink to="/groups" label="Mannschaften verwalten" icon={Users} />
-            <QuickLink to="/events" label="Ereignis anlegen" icon={CalendarDays} />
-            <QuickLink to="/statistics" label="Statistiken ansehen" icon={Activity} />
+        <div className="space-y-4 min-w-0">
+          <div className="card-elevated p-6">
+            <h2 className="text-lg font-bold mb-4">Einzelgespräche</h2>
+            {q.isLoading ? (
+              <div className="py-4 text-center text-sm text-muted-foreground">Lädt…</div>
+            ) : !q.data?.meetings.length ? (
+              <p className="text-sm text-muted-foreground">Keine anstehenden Einzelgespräche.</p>
+            ) : (
+              // Reihenfolge kommt vom Backend: festgelegt (grün), offen (orange), "Keiner passt" (rot).
+              <ul className="space-y-1">
+                {q.data.meetings.map((m) => <MeetingRow key={m.id} meeting={m} />)}
+              </ul>
+            )}
+          </div>
+          <div className="card-elevated p-6">
+            <h2 className="text-lg font-bold mb-4">Schnellzugriff</h2>
+            <div className="grid gap-2">
+              <QuickLink to="/groups" label="Mannschaften verwalten" icon={Users} />
+              <QuickLink to="/events" label="Ereignis anlegen" icon={CalendarDays} />
+              <QuickLink to="/statistics" label="Statistiken ansehen" icon={Activity} />
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+// Ein Gespräch im Dashboard-Fenster: Status-Icon, Spieler und Thema, darunter der Stand.
+function MeetingRow({ meeting: m }: { meeting: DashboardMeeting }) {
+  const meta = MEETING_STATUS_META[m.meeting_status];
+  const detail = m.meeting_status === "confirmed"
+    ? formatProposal(m.event_at)
+    : m.meeting_status === "none_fits"
+      ? "Keiner passt – neue Termine vorschlagen"
+      : `${m.proposed_times.length} ${m.proposed_times.length === 1 ? "Vorschlag" : "Vorschläge"} · ab ${formatProposal(m.proposed_times[0] ?? m.event_at)}`;
+  return (
+    <li>
+      <Link to="/events/$eventId" params={{ eventId: String(m.id) }}
+        className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-secondary transition">
+        <EventTypeIcon type="meeting" status={m.meeting_status} className="h-9 w-9 rounded-lg" iconClassName="h-4 w-4" />
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-sm truncate">
+            {m.player ? `${m.player.first_name} ${m.player.last_name}` : "–"}
+            <span className="font-normal text-muted-foreground"> · {m.title}</span>
+          </div>
+          <div className={`text-xs truncate ${meta.text}`}>{detail}</div>
+        </div>
+      </Link>
+    </li>
   );
 }
 

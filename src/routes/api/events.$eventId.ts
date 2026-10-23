@@ -11,10 +11,12 @@ const updateSchema = z.object({
   meetingPoint: z.string().trim().max(200).nullable().optional(),
   eventAt: z.string().datetime(),
   description: z.string().trim().max(1000).nullable().optional(),
-  groupId: z.coerce.number().int().positive(),
+  groupId: z.coerce.number().int().positive().nullable().optional(),
   maxGuests: z.coerce.number().int().min(0).max(20).nullable().optional(),
   withFood: z.boolean().nullable().optional(),
   deadlineAt: z.string().datetime().nullable().optional(),
+  playerId: z.coerce.number().int().positive().nullable().optional(),
+  proposedTimes: z.array(z.string().datetime()).max(3).nullable().optional(),
 });
 
 export const Route = createFileRoute("/api/events/$eventId")({

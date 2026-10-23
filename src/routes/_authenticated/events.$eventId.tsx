@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, MapPin, Users, Trash2, Search, Check, X, Clock, Goal, FileDown, AlarmClock, type LucideIcon } from "lucide-react";
+import { ArrowLeft, MapPin, User, Users, Trash2, Search, Check, X, Clock, Goal, FileDown, AlarmClock, type LucideIcon } from "lucide-react";
 import type { EventDetail } from "@/lib/api-client";
 import type { KitColors } from "@/lib/event-pdf";
 import { EventFormDialog } from "@/components/event-form-dialog";
@@ -16,6 +16,7 @@ import { EventTypeIcon } from "@/components/event-type-icon";
 import { eventTypeLabel } from "@/lib/event-type";
 import { MEAL_META, MEAL_ORDER } from "@/lib/meal";
 import { MealBadge } from "@/components/meal-picker";
+import { MEETING_STATUS_META, formatProposal, isChosenProposal } from "@/lib/meeting";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -53,6 +54,9 @@ function EventDetail() {
   const e = eventQ.data;
   // Bei Events mit Essen sagen nur die Spieler selbst zu oder ab (inkl. Essenswahl).
   const withFood = !!e?.with_food;
+  // Einzelgespräche haben genau einen Spieler – statt Teilnehmerliste gibt es die Terminvorschläge.
+  const isMeeting = e?.event_type === "meeting";
+  const meetingMeta = isMeeting && e.meeting_status ? MEETING_STATUS_META[e.meeting_status] : null;
   const items = attQ.data ?? [];
   // Gäste von Zusagen zählen bei Gesamt und Zugesagt mit.
   const guestCount = items.reduce((n, a) => n + (a.status === "accepted" ? a.guests.length : 0), 0);
@@ -88,10 +92,11 @@ function EventDetail() {
         <div className="card-elevated p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-start gap-4 min-w-0">
-              <EventTypeIcon type={e.event_type} className="h-14 w-14 rounded-2xl" iconClassName="h-6 w-6" />
+              <EventTypeIcon type={e.event_type} status={e.meeting_status} className="h-14 w-14 rounded-2xl" iconClassName="h-6 w-6" />
               <div className="min-w-0">
-                <div className={`text-xs uppercase tracking-wider font-medium ${e.event_type === "event" ? "text-yellow-400" : "text-muted-foreground"}`}>
+                <div className={`text-xs uppercase tracking-wider font-medium ${e.event_type === "event" ? "text-yellow-400" : meetingMeta ? meetingMeta.text : "text-muted-foreground"}`}>
                   {eventTypeLabel(e)}
+                  {meetingMeta && ` · ${meetingMeta.label}`}
                   {e.event_type === "event" && ` · bis zu ${e.max_guests} ${e.max_guests === 1 ? "Gast" : "Gäste"} pro Spieler`}
                   {withFood && " · mit Essen"}
                 </div>
@@ -99,9 +104,16 @@ function EventDetail() {
                   {e.title}{e.opponent ? `` : ""}
                 </h1>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
-                  <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {format(new Date(e.event_at), "EEEE, d. MMMM yyyy · HH:mm", { locale: de })} Uhr</span>
+                  {/* Beim Einzelgespräch gibt es ein Datum erst, wenn der Spieler einen Termin festgelegt hat. */}
+                  {(!isMeeting || e.meeting_status === "confirmed") && (
+                    <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {format(new Date(e.event_at), "EEEE, d. MMMM yyyy · HH:mm", { locale: de })} Uhr</span>
+                  )}
                   {e.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {e.location}</span>}
-                  <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {e.groups?.name}</span>
+                  {isMeeting ? (
+                    <span className="inline-flex items-center gap-1"><User className="h-3.5 w-3.5" /> {e.player ? `${e.player.first_name} ${e.player.last_name}` : "–"}</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {e.groups?.name}</span>
+                  )}
                   {e.event_type === "event" && e.deadline_at && (
                     <span className="inline-flex items-center gap-1 text-destructive"><AlarmClock className="h-3.5 w-3.5" /> Deadline: {format(new Date(e.deadline_at), "dd.MM HH:mm")}</span>
                   )}
@@ -152,94 +164,133 @@ function EventDetail() {
         </div>
       )}
 
+      {e && isMeeting && <MeetingProposals event={e} />}
+
       {/* Kacheln und Liste erst, wenn das Ereignis geladen ist – vorher ist "Mit Essen" unbekannt
           und es würden kurz die (gesperrten) Status-Buttons erscheinen. */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {!e ? null : withFood ? (
-          <>
-            <StatChip label="Zugesagt" value={stats.accepted} className="bg-primary/15 text-primary"
-              hint={[guestHint, withoutMeal > 0 ? `${withoutMeal} ohne Essenswahl` : null].filter(Boolean).join(" · ") || undefined} />
-            {MEAL_ORDER.map((m) => (
-              <StatChip key={m} label={MEAL_META[m].label} icon={MEAL_META[m].icon} value={mealCounts[m]} className="bg-secondary" />
-            ))}
-          </>
-        ) : (
-          <>
-            <StatChip label="Gesamt" value={stats.total} className="bg-secondary" />
-            <StatChip label="Zugesagt" value={stats.accepted} className="bg-primary/15 text-primary" hint={guestHint ?? undefined} />
-            <StatChip label="Abgesagt" value={stats.declined} className="bg-destructive/15 text-destructive" />
-            <StatChip label="Offen" value={stats.pending} className="bg-warning/15 text-warning" />
-          </>
-        )}
-      </div>
-
-      <div className="card-elevated p-5 sm:p-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Tabs value={filter} onValueChange={(v) => setFilter(v as StatusFilter)}>
-            <TabsList>
-              <TabsTrigger value="all">Alle</TabsTrigger>
-              <TabsTrigger value="accepted">Zugesagt</TabsTrigger>
-              <TabsTrigger value="declined">Abgesagt</TabsTrigger>
-              <TabsTrigger value="pending">Offen</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="relative w-full sm:w-56">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Spieler…" className="pl-9" />
-          </div>
+      {!isMeeting && (<>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {!e ? null : withFood ? (
+            <>
+              <StatChip label="Zugesagt" value={stats.accepted} className="bg-primary/15 text-primary"
+                hint={[guestHint, withoutMeal > 0 ? `${withoutMeal} ohne Essenswahl` : null].filter(Boolean).join(" · ") || undefined} />
+              {MEAL_ORDER.map((m) => (
+                <StatChip key={m} label={MEAL_META[m].label} icon={MEAL_META[m].icon} value={mealCounts[m]} className="bg-secondary" />
+              ))}
+            </>
+          ) : (
+            <>
+              <StatChip label="Gesamt" value={stats.total} className="bg-secondary" />
+              <StatChip label="Zugesagt" value={stats.accepted} className="bg-primary/15 text-primary" hint={guestHint ?? undefined} />
+              <StatChip label="Abgesagt" value={stats.declined} className="bg-destructive/15 text-destructive" />
+              <StatChip label="Offen" value={stats.pending} className="bg-warning/15 text-warning" />
+            </>
+          )}
         </div>
 
-        {attQ.isLoading || !e ? (
-          <div className="py-10 text-center text-muted-foreground text-sm">Lädt…</div>
-        ) : (
-          <ul className="divide-y divide-border">
-            {filtered.map((a) => (
-              <Fragment key={a.id}>
-                <li className="flex items-center gap-3 py-3">
-                  <div className="h-9 w-9 rounded-full bg-secondary grid place-items-center text-xs font-bold shrink-0">
-                    {a.players?.first_name[0]}{a.players?.last_name[0]}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate">{a.players?.first_name} {a.players?.last_name}</div>
-                    <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                      <span className="font-mono">{a.players?.player_code}</span>
-                      {withFood && a.status === "accepted" && <MealInfo meal={a.meal} />}
-                    </div>
-                  </div>
-                  {withFood ? (
-                    <StatusBadge status={a.status} />
-                  ) : (
-                    <StatusPill status={a.status} onChange={async (s) => {
-                      try {
-                        await api.attendances.setStatus(a.id, s);
-                        qc.invalidateQueries({ queryKey: ["event-att", eventId] });
-                      } catch (err) {
-                        toast.error((err as Error).message);
-                      }
-                    }} />
-                  )}
-                </li>
-                {/* Gäste stehen eingerückt unter dem Spieler, der sie mitbringt. */}
-                {a.status === "accepted" && a.guests.map((g, gi) => (
-                  <li key={gi} className="flex items-center gap-3 py-3 pl-6">
-                    <div className="h-9 w-9 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">
-                      {initials(g.name)}
+        <div className="card-elevated p-5 sm:p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Tabs value={filter} onValueChange={(v) => setFilter(v as StatusFilter)}>
+              <TabsList>
+                <TabsTrigger value="all">Alle</TabsTrigger>
+                <TabsTrigger value="accepted">Zugesagt</TabsTrigger>
+                <TabsTrigger value="declined">Abgesagt</TabsTrigger>
+                <TabsTrigger value="pending">Offen</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="relative w-full sm:w-56">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Spieler…" className="pl-9" />
+            </div>
+          </div>
+
+          {attQ.isLoading || !e ? (
+            <div className="py-10 text-center text-muted-foreground text-sm">Lädt…</div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {filtered.map((a) => (
+                <Fragment key={a.id}>
+                  <li className="flex items-center gap-3 py-3">
+                    <div className="h-9 w-9 rounded-full bg-secondary grid place-items-center text-xs font-bold shrink-0">
+                      {a.players?.first_name[0]}{a.players?.last_name[0]}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate text-primary">{g.name} (Gast)</div>
+                      <div className="font-medium truncate">{a.players?.first_name} {a.players?.last_name}</div>
                       <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                        <span className="truncate">Gast von {a.players?.first_name} {a.players?.last_name}</span>
-                        {withFood && <MealInfo meal={g.meal} />}
+                        <span className="font-mono">{a.players?.player_code}</span>
+                        {withFood && a.status === "accepted" && <MealInfo meal={a.meal} />}
                       </div>
                     </div>
-                    <StatusBadge status="accepted" />
+                    {withFood ? (
+                      <StatusBadge status={a.status} />
+                    ) : (
+                      <StatusPill status={a.status} onChange={async (s) => {
+                        try {
+                          await api.attendances.setStatus(a.id, s);
+                          qc.invalidateQueries({ queryKey: ["event-att", eventId] });
+                        } catch (err) {
+                          toast.error((err as Error).message);
+                        }
+                      }} />
+                    )}
                   </li>
-                ))}
-              </Fragment>
-            ))}
-          </ul>
-        )}
-      </div>
+                  {/* Gäste stehen eingerückt unter dem Spieler, der sie mitbringt. */}
+                  {a.status === "accepted" && a.guests.map((g, gi) => (
+                    <li key={gi} className="flex items-center gap-3 py-3 pl-6">
+                      <div className="h-9 w-9 rounded-full bg-primary/15 text-primary grid place-items-center text-xs font-bold shrink-0">
+                        {initials(g.name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate text-primary">{g.name} (Gast)</div>
+                        <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                          <span className="truncate">Gast von {a.players?.first_name} {a.players?.last_name}</span>
+                          {withFood && <MealInfo meal={g.meal} />}
+                        </div>
+                      </div>
+                      <StatusBadge status="accepted" />
+                    </li>
+                  ))}
+                </Fragment>
+              ))}
+            </ul>
+          )}
+        </div>
+      </>)}
+    </div>
+  );
+}
+
+// Terminvorschläge eines Einzelgesprächs: der vom Spieler gewählte grün, vergangene ausgegraut.
+// Bei "Keiner passt" der Hinweis, über "Bearbeiten" neue Termine einzutragen.
+function MeetingProposals({ event: e }: { event: EventDetail }) {
+  const now = Date.now();
+  const confirmed = e.meeting_status === "confirmed";
+  return (
+    <div className="card-elevated p-5 sm:p-6 space-y-3">
+      <h2 className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Terminvorschläge</h2>
+      {e.meeting_status === "none_fits" && (
+        <div className="rounded-lg bg-destructive/15 text-destructive text-sm p-3">
+          Dem Spieler passt keiner der Termine. Bitte über „Bearbeiten“ neue Termine vorschlagen.
+        </div>
+      )}
+      <ul className="space-y-2">
+        {e.proposed_times.map((t, i) => {
+          const chosen = isChosenProposal(t, e);
+          const past = new Date(t).getTime() <= now;
+          return (
+            <li key={t} className={`flex items-center gap-3 rounded-lg p-3 text-sm ${chosen ? "bg-primary/15 text-primary font-semibold shadow-glow" : "bg-secondary"} ${!chosen && (past || confirmed) ? "opacity-50" : ""}`}>
+              <span className="w-5 shrink-0 text-muted-foreground">{i + 1}.</span>
+              <span className="flex-1">{formatProposal(t, true)} Uhr</span>
+              {chosen ? (
+                <span className="inline-flex items-center gap-1 text-xs"><Check className="h-3.5 w-3.5" /> Festgelegt</span>
+              ) : past ? (
+                <span className="text-xs text-muted-foreground">vorbei</span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      {e.meeting_status === "open" && <p className="text-xs text-muted-foreground">Der Spieler hat noch keinen Termin gewählt.</p>}
     </div>
   );
 }

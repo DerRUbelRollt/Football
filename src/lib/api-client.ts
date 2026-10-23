@@ -96,7 +96,16 @@ export interface PlayerPenaltyRow {
 
 export type AttendanceStatus = "accepted" | "declined" | "pending";
 
-export type EventType = "training" | "game" | "event";
+export type EventType = "training" | "game" | "event" | "meeting";
+
+// Stand eines Einzelgesprächs: Spieler muss noch wählen, hat einen Termin festgelegt
+// oder hat "Keiner passt" gemeldet.
+export type MeetingStatus = "open" | "confirmed" | "none_fits";
+
+export interface PersonName {
+  first_name: string;
+  last_name: string;
+}
 
 export type Meal = "vegan" | "vegetarian" | "meat";
 
@@ -132,9 +141,21 @@ export interface PlayerUpcomingEvent extends PlayerHistoryEvent {
   deadline_at: string | null;
 }
 
+export interface PlayerMeeting {
+  id: number;
+  event_type: "meeting";
+  title: string;
+  location: string | null;
+  description: string | null;
+  event_at: string;
+  proposed_times: string[];
+  meeting_status: MeetingStatus;
+}
+
 export interface PlayerOverview {
   player: PlayerSummary;
   upcoming: PlayerUpcomingEvent[];
+  meetings: PlayerMeeting[];
   history: PlayerHistoryEvent[];
 }
 
@@ -182,12 +203,17 @@ export interface EventListItem {
   location: string | null;
   event_at: string;
   groups: { name: string } | null;
+  // Nur bei Einzelgesprächen befüllt.
+  player: PersonName | null;
+  proposed_times: string[];
+  meeting_status: MeetingStatus | null;
 }
 
 export interface EventDetail extends EventListItem {
   meeting_point: string | null;
   description: string | null;
-  group_id: number;
+  group_id: number | null;
+  player_id: number | null;
   home_score: number | null;
   away_score: number | null;
   max_guests: number;
@@ -204,10 +230,13 @@ export interface NewEvent {
   meetingPoint: string | null;
   eventAt: string;
   description: string | null;
-  groupId: number;
+  groupId: number | null;
   maxGuests: number | null;
   withFood: boolean | null;
   deadlineAt: string | null;
+  // Nur bei Einzelgesprächen; beim Bearbeiten null = unverändert lassen.
+  playerId: number | null;
+  proposedTimes: string[] | null;
 }
 
 export type EventUpdate = Omit<NewEvent, "eventType">;
@@ -225,11 +254,22 @@ export interface EventAttendanceRow {
   } | null;
 }
 
+export interface DashboardMeeting {
+  id: number;
+  title: string;
+  location: string | null;
+  event_at: string;
+  proposed_times: string[];
+  meeting_status: MeetingStatus;
+  player: PersonName | null;
+}
+
 export interface DashboardStats {
   groups: number;
   players: number;
   upcoming: EventListItem[];
   rate: number;
+  meetings: DashboardMeeting[];
 }
 
 export interface StatsAttendanceRow {
@@ -293,6 +333,8 @@ export const api = {
       apiFetch<PlayerOverview>("/api/player/overview", { method: "POST", body }),
     setAttendance: (body: { code: string; eventId: number; status: AttendanceStatus; meal?: Meal | null; guests?: EventGuest[] }) =>
       apiFetch<{ ok: true }>("/api/player/attendance", { method: "POST", body }),
+    answerMeeting: (body: { code: string; eventId: number; chosenAt?: string; noneFits?: boolean }) =>
+      apiFetch<{ ok: true }>("/api/player/meeting", { method: "POST", body }),
     penalty: (body: { managerCode: string; code: string; amount: number; crateAmount?: number }) =>
       apiFetch<{ ok: true; player_id: number; player_penalty: number; beer_crates: number }>("/api/player/penalty", { method: "PATCH", body }),
     allPenalties: (body: { managerCode: string }) =>

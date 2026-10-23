@@ -39,5 +39,20 @@ public class AppDbContext : DbContext
             .WithMany(g => g.PlayerMemberships)
             .HasForeignKey(m => m.GroupId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Die Mannschaft ist seit den Einzelgesprächen optional – beim Löschen einer Mannschaft
+        // sollen ihre Ereignisse trotzdem weiter mitgelöscht werden.
+        modelBuilder.Entity<Event>()
+            .HasOne(e => e.Group)
+            .WithMany()
+            .HasForeignKey(e => e.GroupId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Wird ein Spieler gelöscht, verschwinden auch seine Einzelgespräche.
+        modelBuilder.Entity<Event>()
+            .HasOne(e => e.Player)
+            .WithMany()
+            .HasForeignKey(e => e.PlayerId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

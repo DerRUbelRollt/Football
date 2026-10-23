@@ -1,12 +1,14 @@
-import { Activity, PartyPopper, Trophy, type LucideIcon } from "lucide-react";
+import { Activity, MessagesSquare, PartyPopper, Trophy, type LucideIcon } from "lucide-react";
 import type { EventType } from "@/lib/api-client";
 
 // Bezeichnung, Icon und Farbe je Ereignistyp – überall gleich, damit Events (gelb)
-// sofort von Trainings (grün) und Spielen (blau) zu unterscheiden sind.
+// sofort von Trainings (grün) und Spielen (blau) zu unterscheiden sind. Einzelgespräche
+// sind violett; beim Trainer zeigt ihr Icon stattdessen den Stand (siehe meeting.ts).
 export const EVENT_TYPE_META: Record<EventType, { label: string; icon: LucideIcon; tone: string }> = {
   training: { label: "Training", icon: Activity, tone: "bg-primary/15 text-primary" },
   game: { label: "Spiel", icon: Trophy, tone: "bg-chart-2/15 text-chart-2" },
   event: { label: "Event", icon: PartyPopper, tone: "bg-yellow-400/15 text-yellow-400" },
+  meeting: { label: "Einzelgespräch", icon: MessagesSquare, tone: "bg-violet-500/15 text-violet-400" },
 };
 
 // Überschrift über dem Titel, bei Spielen mit Heim/Auswärts.

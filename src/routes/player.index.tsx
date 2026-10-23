@@ -1,16 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, type EventGuest, type Meal, type PlayerUpcomingEvent } from "@/lib/api-client";
+import { api, ApiError, type EventGuest, type Meal, type PlayerMeeting, type PlayerUpcomingEvent } from "@/lib/api-client";
 import { getPlayerCode, clearPlayerCode } from "@/lib/player-session";
 import { formatPenaltyBalance } from "@/lib/penalty-format";
 import { eventTypeLabel } from "@/lib/event-type";
 import { MEAL_META } from "@/lib/meal";
+import { formatProposal } from "@/lib/meeting";
 import { EventTypeIcon } from "@/components/event-type-icon";
 import { ParticipationSheet } from "@/components/participation-sheet";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { motion } from "framer-motion";
-import { Trophy, Activity, MapPin, Clock, Check, X, LogOut, Calendar, Wallet, Users, Pencil, Utensils, type LucideIcon } from "lucide-react";
+import { Trophy, Activity, MapPin, Clock, Check, X, LogOut, Calendar, Wallet, Users, Pencil, Utensils, Lock, MessagesSquare, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { toast } from "sonner";
@@ -29,6 +31,10 @@ function PlayerHome() {
   const [sheet, setSheet] = useState<{ event: PlayerUpcomingEvent; open: boolean; n: number } | null>(null);
   const openSheet = (event: PlayerUpcomingEvent) => setSheet((s) => ({ event, open: true, n: (s?.n ?? 0) + 1 }));
   const closeSheet = () => setSheet((s) => s && { ...s, open: false });
+  // Bestätigung beim Einzelgespräch: Termin festlegen (chosenAt) oder "Keiner passt" (chosenAt = null).
+  // Bleibt beim Schließen gefüllt, damit sich der Text während der Animation nicht ändert.
+  const [confirm, setConfirm] = useState<{ meeting: PlayerMeeting; chosenAt: string | null; open: boolean } | null>(null);
+  const closeConfirm = () => setConfirm((c) => c && { ...c, open: false });
 
   useEffect(() => {
     const c = getPlayerCode();
@@ -47,6 +53,22 @@ function PlayerHome() {
       api.player.setAttendance({ code: code!, eventId: vars.eventId, status: vars.status, meal: vars.meal, guests: vars.guests }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["player-overview"] }),
     onError: (e) => toast.error(e instanceof ApiError ? e.message : (e as Error).message),
+  });
+
+  const meetingM = useMutation({
+    mutationFn: (vars: { eventId: number; chosenAt: string | null }) =>
+      api.player.answerMeeting(vars.chosenAt
+        ? { code: code!, eventId: vars.eventId, chosenAt: vars.chosenAt }
+        : { code: code!, eventId: vars.eventId, noneFits: true }),
+    onSuccess: (_, vars) => {
+      toast.success(vars.chosenAt ? "Termin festgelegt" : "Der Trainer schlägt dir neue Termine vor");
+      qc.invalidateQueries({ queryKey: ["player-overview"] });
+    },
+    onError: (e) => {
+      toast.error(e instanceof ApiError ? e.message : (e as Error).message);
+      // Z. B. hat der Trainer die Termine inzwischen geändert – neu laden.
+      qc.invalidateQueries({ queryKey: ["player-overview"] });
+    },
   });
 
   function signOut() {
@@ -74,9 +96,10 @@ function PlayerHome() {
   }
 
   const { player, upcoming, history } = q.data!;
+  const meetings = q.data!.meetings ?? [];
   const { moneyText, crateText, hasDebt } = formatPenaltyBalance(player.player_penalty, player.beer_crates);
-  // Events (Vereinsfeiern) zählen nicht zur Anwesenheitsquote.
-  const all = [...upcoming, ...history].filter((e) => e.event_type !== "event");
+  // Nur Trainings und Spiele zählen zur Anwesenheitsquote – keine Events und Einzelgespräche.
+  const all = [...upcoming, ...history].filter((e) => e.event_type === "training" || e.event_type === "game");
   const accepted = all.filter((e) => e.attendances?.[0]?.status === "accepted").length;
   const decided = all.filter((e) => {
     const s = e.attendances?.[0]?.status;
@@ -143,6 +166,21 @@ function PlayerHome() {
           />
           <MiniStat label="Quote" value={`${rate}%`} icon={Calendar} />
         </div>
+
+        {/* Einzelgespräche stehen immer ganz oben und sind violett hervorgehoben. */}
+        {meetings.length > 0 && (
+          <section>
+            <h2 className="font-bold text-lg mb-3 text-violet-400 inline-flex items-center gap-2">
+              <MessagesSquare className="h-5 w-5" /> Einzelgespräch
+            </h2>
+            <div className="space-y-3">
+              {meetings.map((mt, i) => (
+                <MeetingCard key={mt.id} meeting={mt} index={i} busy={meetingM.isPending}
+                  onAnswer={(chosenAt) => setConfirm({ meeting: mt, chosenAt, open: true })} />
+              ))}
+            </div>
+          </section>
+        )}
 
         <section>
           <h2 className="font-bold text-lg mb-3">Kommende Ereignisse</h2>
@@ -256,7 +294,9 @@ function PlayerHome() {
                     <div className="font-medium truncate">{h.title}</div>
                     <div className="text-xs text-muted-foreground">{format(new Date(h.event_at), "d. MMM yyyy", { locale: de })}</div>
                   </div>
-                  <StatusBadge status={h.attendances[0]?.status} />
+                  {h.event_type === "meeting"
+                    ? <MeetingHistoryBadge status={h.attendances[0]?.status} />
+                    : <StatusBadge status={h.attendances[0]?.status} />}
                 </div>
               ))}
             </div>
@@ -277,7 +317,97 @@ function PlayerHome() {
           )}
         />
       )}
+
+      <AlertDialog open={!!confirm?.open} onOpenChange={(o) => { if (!o) closeConfirm(); }}>
+        <AlertDialogContent className="w-[calc(100%-2rem)] rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirm?.chosenAt ? "Termin festlegen?" : "Keiner der Termine passt?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirm?.chosenAt ? (
+                <>Möchtest du <span className="font-semibold text-foreground">{formatProposal(confirm.chosenAt)} Uhr</span> für „{confirm.meeting.title}“ festhalten? Danach kannst du den Termin nicht mehr ändern.</>
+              ) : (
+                "Dein Trainer sieht, dass dir keiner der Termine passt, und schlägt dir neue vor. Bis dahin kannst du keinen Termin wählen."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className={confirm?.chosenAt ? undefined : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}
+              onClick={() => confirm && meetingM.mutate({ eventId: confirm.meeting.id, chosenAt: confirm.chosenAt })}>
+              {confirm?.chosenAt ? "Festlegen" : "Keiner passt"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  );
+}
+
+// Einzelgespräch beim Spieler: offene Termine untereinander zum Festlegen (vergangene ausgegraut)
+// und "Keiner passt"; nach der Festlegung nur noch der gewählte Termin.
+function MeetingCard({ meeting: mt, index, busy, onAnswer }: {
+  meeting: PlayerMeeting;
+  index: number;
+  busy: boolean;
+  onAnswer: (chosenAt: string | null) => void;
+}) {
+  const now = Date.now();
+  const status = mt.meeting_status;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className="card-elevated p-5 border-violet-500/60 ring-1 ring-violet-500/30"
+    >
+      <div className="flex items-start gap-4">
+        <EventTypeIcon type="meeting" className="h-12 w-12 rounded-xl" iconClassName="h-5 w-5" />
+        <div className="min-w-0 flex-1">
+          <div className="text-xs uppercase tracking-wider font-medium text-violet-400">Einzelgespräch</div>
+          <div className="font-bold text-lg mt-0.5">{mt.title}</div>
+          {mt.location && (
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {mt.location}</span>
+            </div>
+          )}
+          {mt.description && <p className="text-sm mt-2 text-muted-foreground">{mt.description}</p>}
+        </div>
+      </div>
+      {status === "confirmed" ? (
+        <div className="mt-4 flex items-center gap-2 rounded-lg bg-primary/15 text-primary p-3 font-semibold">
+          <Check className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{formatProposal(mt.event_at)} Uhr</span>
+          <span className="inline-flex items-center gap-1 text-xs"><Lock className="h-3.5 w-3.5" /> Festgelegt</span>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-2">
+          {status === "none_fits" ? (
+            <p className="text-sm rounded-lg bg-secondary p-3 text-muted-foreground">
+              Du hast „Keiner passt“ gemeldet. Wartet auf neue Termine vom Trainer.
+            </p>
+          ) : (
+            <p className="text-sm font-semibold">Wähle einen Termin:</p>
+          )}
+          {mt.proposed_times.map((t) => {
+            const past = new Date(t).getTime() <= now;
+            return (
+              <Button key={t} variant="outline" className="w-full h-11 justify-start hover:border-violet-500/60 hover:bg-violet-500/10"
+                disabled={busy || past || status === "none_fits"} onClick={() => onAnswer(t)}>
+                <Clock className="h-4 w-4 mr-1" /> {formatProposal(t)} Uhr
+                {past && <span className="ml-auto text-xs text-muted-foreground">vorbei</span>}
+              </Button>
+            );
+          })}
+          {status === "open" && (
+            <Button variant="ghost" className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+              disabled={busy} onClick={() => onAnswer(null)}>
+              <X className="h-4 w-4 mr-1" /> Keiner passt
+            </Button>
+          )}
+        </div>
+      )}
+    </motion.div>
   );
 }
 
@@ -327,4 +457,13 @@ function StatusBadge({ status }: { status: string }) {
     pending: { color: "text-muted-foreground bg-secondary", label: "Offen" },
   }[status as "accepted" | "declined" | "pending"] ?? { color: "text-muted-foreground bg-secondary", label: "–" };
   return <span className={`text-xs px-2 py-1 rounded-full font-semibold ${cfg.color}`}>{cfg.label}</span>;
+}
+
+// Abgelaufenes Einzelgespräch in der Historie: festgelegt, "Keiner passt" oder nie festgelegt.
+function MeetingHistoryBadge({ status }: { status: string }) {
+  const cfg = {
+    accepted: { color: "text-primary bg-primary/15", label: "Festgelegt" },
+    declined: { color: "text-destructive bg-destructive/15", label: "Keiner passt" },
+  }[status as "accepted" | "declined"] ?? { color: "text-muted-foreground bg-secondary", label: "Nicht festgelegt" };
+  return <span className={`text-xs px-2 py-1 rounded-full font-semibold whitespace-nowrap ${cfg.color}`}>{cfg.label}</span>;
 }

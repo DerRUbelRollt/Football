@@ -93,7 +93,7 @@ namespace TeamCompass.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("GroupId")
+                    b.Property<int?>("GroupId")
                         .HasColumnType("integer");
 
                     b.Property<string>("HomeAway")
@@ -114,6 +114,13 @@ namespace TeamCompass.Api.Data.Migrations
                     b.Property<string>("Opponent")
                         .HasColumnType("text");
 
+                    b.Property<int?>("PlayerId")
+                        .HasColumnType("integer");
+
+                    b.PrimitiveCollection<List<DateTime>>("ProposedTimes")
+                        .IsRequired()
+                        .HasColumnType("timestamp with time zone[]");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text");
@@ -124,6 +131,8 @@ namespace TeamCompass.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("GroupId");
+
+                    b.HasIndex("PlayerId");
 
                     b.ToTable("Events");
                 });
@@ -262,10 +271,16 @@ namespace TeamCompass.Api.Data.Migrations
                     b.HasOne("TeamCompass.Api.Models.Group", "Group")
                         .WithMany()
                         .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("TeamCompass.Api.Models.Player", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Group");
+
+                    b.Navigation("Player");
                 });
 
             modelBuilder.Entity("TeamCompass.Api.Models.PlayerGroupMembership", b =>
