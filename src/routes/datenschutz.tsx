@@ -39,6 +39,12 @@ function DatenschutzPage() {
               <li>Trainer-Zugangsdaten (Name, verschlüsseltes Passwort)</li>
               <li>Spielerdaten (Vor- und Nachname, eindeutige Spieler-ID, Zuordnung zu Mannschaften)</li>
               <li>Anwesenheits- und Statistikdaten zu Trainings und Spielen</li>
+              <li>
+                Lauf-Nachweise der Vorbereitung: vom Spieler hochgeladener Screenshot seines Laufs, seine
+                Beschreibung bzw. Absage-Begründung, die Leistungsgruppe (A/B/C) sowie Kommentare des
+                Trainers. Screenshots aus Lauf-Apps können eine Karte der Strecke enthalten – bitte vor dem
+                Hochladen zuschneiden, wenn sie z. B. die eigene Wohnadresse zeigt.
+              </li>
               <li>Technisch notwendige Sitzungsdaten (Session-Cookie zur Anmeldung)</li>
             </ul>
           </section>
@@ -60,6 +66,11 @@ function DatenschutzPage() {
               Es gibt aktuell noch keine feste Löschfrist. Personenbezogene Daten werden nur so lange
               gespeichert, wie sie für den oben genannten Zweck benötigt werden, spätestens jedoch bis zum
               Austritt eines Spielers aus der Mannschaft — danach werden sie unverzüglich gelöscht.
+            </p>
+            <p className="mt-2">
+              Lauf-Screenshots der Vorbereitung werden gelöscht, sobald der Trainer den Lauf geprüft hat,
+              spätestens aber 14 Tage nach dem Ende der jeweiligen Trainingswoche. Beschreibungen,
+              Absage-Begründungen und Kommentare bleiben bis zum Löschen der Vorbereitung gespeichert.
             </p>
           </section>
 

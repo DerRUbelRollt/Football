@@ -1,4 +1,4 @@
-import { Activity, MessagesSquare, PartyPopper, Trophy, type LucideIcon } from "lucide-react";
+import { Activity, Dumbbell, MessagesSquare, PartyPopper, Trophy, type LucideIcon } from "lucide-react";
 import type { EventType } from "@/lib/api-client";
 
 // Bezeichnung, Icon und Farbe je Ereignistyp – überall gleich, damit Events (gelb)
@@ -9,6 +9,8 @@ export const EVENT_TYPE_META: Record<EventType, { label: string; icon: LucideIco
   game: { label: "Spiel", icon: Trophy, tone: "bg-chart-2/15 text-chart-2" },
   event: { label: "Event", icon: PartyPopper, tone: "bg-yellow-400/15 text-yellow-400" },
   meeting: { label: "Einzelgespräch", icon: MessagesSquare, tone: "bg-violet-500/15 text-violet-400" },
+  // Vorbereitungs-Ereignisse (Laufplan) sind pink – eigene Farbe, die kein anderer Typ hat.
+  preparation: { label: "Vorbereitung", icon: Dumbbell, tone: "bg-pink-500/15 text-pink-400" },
 };
 
 // Überschrift über dem Titel, bei Spielen mit Heim/Auswärts.

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using Microsoft.EntityFrameworkCore;
 using TeamCompass.Api.Data;
+using TeamCompass.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +28,7 @@ if (string.IsNullOrWhiteSpace(conn))
     conn = "Host=127.0.0.1;Port=5433;Username=postgres;Password=TeamCompass2024;Database=team_compass_dev";
 }
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(conn));
+builder.Services.AddHostedService<PreparationImageCleanup>();
 
 var app = builder.Build();
 

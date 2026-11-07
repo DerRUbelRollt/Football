@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   CalendarDays,
+  Dumbbell,
   BarChart3,
   Settings,
   LogOut,
@@ -20,6 +21,7 @@ const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/groups", label: "Mannschaften", icon: Users },
   { to: "/events", label: "Ereignisse", icon: CalendarDays },
+  { to: "/preparations", label: "Vorbereitung", icon: Dumbbell },
   { to: "/statistics", label: "Statistik", icon: BarChart3 },
 ] as const;
 

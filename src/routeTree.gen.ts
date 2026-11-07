@@ -20,17 +20,25 @@ import { Route as PlayerMannschaftRouteImport } from './routes/player.mannschaft
 import { Route as ApiPlayersRouteImport } from './routes/api/players'
 import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authenticated/statistics'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedPreparationsRouteImport } from './routes/_authenticated/preparations'
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as ApiPreparationsIndexRouteImport } from './routes/api/preparations.index'
 import { Route as ApiGroupsIndexRouteImport } from './routes/api/groups.index'
 import { Route as ApiEventsIndexRouteImport } from './routes/api/events.index'
+import { Route as AuthenticatedPreparationsIndexRouteImport } from './routes/_authenticated/preparations.index'
 import { Route as AuthenticatedGroupsIndexRouteImport } from './routes/_authenticated/groups.index'
 import { Route as AuthenticatedEventsIndexRouteImport } from './routes/_authenticated/events.index'
 import { Route as ApiStatsDashboardRouteImport } from './routes/api/stats.dashboard'
 import { Route as ApiStatsAttendanceRouteImport } from './routes/api/stats.attendance'
+import { Route as ApiPreparationsPreparationIdRouteImport } from './routes/api/preparations.$preparationId'
+import { Route as ApiPreparationUnitsUnitIdRouteImport } from './routes/api/preparation-units.$unitId'
 import { Route as ApiPlayersPlayerIdRouteImport } from './routes/api/players.$playerId'
 import { Route as ApiPlayerTeamRouteImport } from './routes/api/player.team'
+import { Route as ApiPlayerPreparationEntryRouteImport } from './routes/api/player.preparation-entry'
+import { Route as ApiPlayerPreparationDoneRouteImport } from './routes/api/player.preparation-done'
+import { Route as ApiPlayerPreparationDeclineRouteImport } from './routes/api/player.preparation-decline'
 import { Route as ApiPlayerPenaltyRouteImport } from './routes/api/player.penalty'
 import { Route as ApiPlayerPenaltiesRouteImport } from './routes/api/player.penalties'
 import { Route as ApiPlayerOverviewRouteImport } from './routes/api/player.overview'
@@ -48,10 +56,19 @@ import { Route as ApiAuthLoginRouteImport } from './routes/api/auth.login'
 import { Route as ApiAttendancesAttendanceIdRouteImport } from './routes/api/attendances.$attendanceId'
 import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
 import { Route as AuthenticatedEventsEventIdRouteImport } from './routes/_authenticated/events.$eventId'
+import { Route as AuthenticatedPreparationsPreparationIdIndexRouteImport } from './routes/_authenticated/preparations.$preparationId.index'
+import { Route as ApiPreparationsPreparationIdPlayersRouteImport } from './routes/api/preparations.$preparationId.players'
 import { Route as ApiGroupsGroupIdPlayersRouteImport } from './routes/api/groups.$groupId.players'
 import { Route as ApiEventsEventIdResultRouteImport } from './routes/api/events.$eventId.result'
 import { Route as ApiEventsEventIdAttendancesRouteImport } from './routes/api/events.$eventId.attendances'
+import { Route as AuthenticatedPreparationsPreparationIdEinteilenRouteImport } from './routes/_authenticated/preparations.$preparationId.einteilen'
+import { Route as AuthenticatedPreparationsPreparationIdGroupIndexRouteImport } from './routes/_authenticated/preparations.$preparationId.$group.index'
+import { Route as ApiPreparationsPreparationIdPlayersPlayerIdRouteImport } from './routes/api/preparations.$preparationId.players.$playerId'
+import { Route as ApiPreparationsPreparationIdGroupsGroupRouteImport } from './routes/api/preparations.$preparationId.groups.$group'
+import { Route as ApiPreparationUnitsUnitIdPlayersPlayerIdRouteImport } from './routes/api/preparation-units.$unitId.players.$playerId'
 import { Route as ApiPlayersPlayerIdGroupsGroupIdRouteImport } from './routes/api/players.$playerId.groups.$groupId'
+import { Route as AuthenticatedPreparationsPreparationIdGroupUnitIdRouteImport } from './routes/_authenticated/preparations.$preparationId.$group.$unitId'
+import { Route as ApiPreparationUnitsUnitIdPlayersPlayerIdReviewRouteImport } from './routes/api/preparation-units.$unitId.players.$playerId.review'
 
 const ImpressumRoute = ImpressumRouteImport.update({
   id: '/impressum',
@@ -107,6 +124,12 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPreparationsRoute =
+  AuthenticatedPreparationsRouteImport.update({
+    id: '/preparations',
+    path: '/preparations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedGroupsRoute = AuthenticatedGroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
@@ -122,6 +145,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPreparationsIndexRoute = ApiPreparationsIndexRouteImport.update({
+  id: '/api/preparations/',
+  path: '/api/preparations/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGroupsIndexRoute = ApiGroupsIndexRouteImport.update({
   id: '/api/groups/',
   path: '/api/groups/',
@@ -132,6 +160,12 @@ const ApiEventsIndexRoute = ApiEventsIndexRouteImport.update({
   path: '/api/events/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedPreparationsIndexRoute =
+  AuthenticatedPreparationsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedPreparationsRoute,
+  } as any)
 const AuthenticatedGroupsIndexRoute =
   AuthenticatedGroupsIndexRouteImport.update({
     id: '/',
@@ -154,6 +188,18 @@ const ApiStatsAttendanceRoute = ApiStatsAttendanceRouteImport.update({
   path: '/api/stats/attendance',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPreparationsPreparationIdRoute =
+  ApiPreparationsPreparationIdRouteImport.update({
+    id: '/api/preparations/$preparationId',
+    path: '/api/preparations/$preparationId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPreparationUnitsUnitIdRoute =
+  ApiPreparationUnitsUnitIdRouteImport.update({
+    id: '/api/preparation-units/$unitId',
+    path: '/api/preparation-units/$unitId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPlayersPlayerIdRoute = ApiPlayersPlayerIdRouteImport.update({
   id: '/$playerId',
   path: '/$playerId',
@@ -164,6 +210,24 @@ const ApiPlayerTeamRoute = ApiPlayerTeamRouteImport.update({
   path: '/api/player/team',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlayerPreparationEntryRoute =
+  ApiPlayerPreparationEntryRouteImport.update({
+    id: '/api/player/preparation-entry',
+    path: '/api/player/preparation-entry',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPlayerPreparationDoneRoute =
+  ApiPlayerPreparationDoneRouteImport.update({
+    id: '/api/player/preparation-done',
+    path: '/api/player/preparation-done',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPlayerPreparationDeclineRoute =
+  ApiPlayerPreparationDeclineRouteImport.update({
+    id: '/api/player/preparation-decline',
+    path: '/api/player/preparation-decline',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPlayerPenaltyRoute = ApiPlayerPenaltyRouteImport.update({
   id: '/api/player/penalty',
   path: '/api/player/penalty',
@@ -252,6 +316,18 @@ const AuthenticatedEventsEventIdRoute =
     path: '/$eventId',
     getParentRoute: () => AuthenticatedEventsRoute,
   } as any)
+const AuthenticatedPreparationsPreparationIdIndexRoute =
+  AuthenticatedPreparationsPreparationIdIndexRouteImport.update({
+    id: '/$preparationId/',
+    path: '/$preparationId/',
+    getParentRoute: () => AuthenticatedPreparationsRoute,
+  } as any)
+const ApiPreparationsPreparationIdPlayersRoute =
+  ApiPreparationsPreparationIdPlayersRouteImport.update({
+    id: '/players',
+    path: '/players',
+    getParentRoute: () => ApiPreparationsPreparationIdRoute,
+  } as any)
 const ApiGroupsGroupIdPlayersRoute = ApiGroupsGroupIdPlayersRouteImport.update({
   id: '/players',
   path: '/players',
@@ -268,11 +344,53 @@ const ApiEventsEventIdAttendancesRoute =
     path: '/attendances',
     getParentRoute: () => ApiEventsEventIdRoute,
   } as any)
+const AuthenticatedPreparationsPreparationIdEinteilenRoute =
+  AuthenticatedPreparationsPreparationIdEinteilenRouteImport.update({
+    id: '/$preparationId/einteilen',
+    path: '/$preparationId/einteilen',
+    getParentRoute: () => AuthenticatedPreparationsRoute,
+  } as any)
+const AuthenticatedPreparationsPreparationIdGroupIndexRoute =
+  AuthenticatedPreparationsPreparationIdGroupIndexRouteImport.update({
+    id: '/$preparationId/$group/',
+    path: '/$preparationId/$group/',
+    getParentRoute: () => AuthenticatedPreparationsRoute,
+  } as any)
+const ApiPreparationsPreparationIdPlayersPlayerIdRoute =
+  ApiPreparationsPreparationIdPlayersPlayerIdRouteImport.update({
+    id: '/$playerId',
+    path: '/$playerId',
+    getParentRoute: () => ApiPreparationsPreparationIdPlayersRoute,
+  } as any)
+const ApiPreparationsPreparationIdGroupsGroupRoute =
+  ApiPreparationsPreparationIdGroupsGroupRouteImport.update({
+    id: '/groups/$group',
+    path: '/groups/$group',
+    getParentRoute: () => ApiPreparationsPreparationIdRoute,
+  } as any)
+const ApiPreparationUnitsUnitIdPlayersPlayerIdRoute =
+  ApiPreparationUnitsUnitIdPlayersPlayerIdRouteImport.update({
+    id: '/players/$playerId',
+    path: '/players/$playerId',
+    getParentRoute: () => ApiPreparationUnitsUnitIdRoute,
+  } as any)
 const ApiPlayersPlayerIdGroupsGroupIdRoute =
   ApiPlayersPlayerIdGroupsGroupIdRouteImport.update({
     id: '/groups/$groupId',
     path: '/groups/$groupId',
     getParentRoute: () => ApiPlayersPlayerIdRoute,
+  } as any)
+const AuthenticatedPreparationsPreparationIdGroupUnitIdRoute =
+  AuthenticatedPreparationsPreparationIdGroupUnitIdRouteImport.update({
+    id: '/$preparationId/$group/$unitId',
+    path: '/$preparationId/$group/$unitId',
+    getParentRoute: () => AuthenticatedPreparationsRoute,
+  } as any)
+const ApiPreparationUnitsUnitIdPlayersPlayerIdReviewRoute =
+  ApiPreparationUnitsUnitIdPlayersPlayerIdReviewRouteImport.update({
+    id: '/review',
+    path: '/review',
+    getParentRoute: () => ApiPreparationUnitsUnitIdPlayersPlayerIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -283,6 +401,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/events': typeof AuthenticatedEventsRouteWithChildren
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/preparations': typeof AuthenticatedPreparationsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/api/players': typeof ApiPlayersRouteWithChildren
@@ -306,18 +425,34 @@ export interface FileRoutesByFullPath {
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
   '/api/player/penalty': typeof ApiPlayerPenaltyRoute
+  '/api/player/preparation-decline': typeof ApiPlayerPreparationDeclineRoute
+  '/api/player/preparation-done': typeof ApiPlayerPreparationDoneRoute
+  '/api/player/preparation-entry': typeof ApiPlayerPreparationEntryRoute
   '/api/player/team': typeof ApiPlayerTeamRoute
   '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
+  '/api/preparation-units/$unitId': typeof ApiPreparationUnitsUnitIdRouteWithChildren
+  '/api/preparations/$preparationId': typeof ApiPreparationsPreparationIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
   '/events/': typeof AuthenticatedEventsIndexRoute
   '/groups/': typeof AuthenticatedGroupsIndexRoute
+  '/preparations/': typeof AuthenticatedPreparationsIndexRoute
   '/api/events/': typeof ApiEventsIndexRoute
   '/api/groups/': typeof ApiGroupsIndexRoute
+  '/api/preparations/': typeof ApiPreparationsIndexRoute
+  '/preparations/$preparationId/einteilen': typeof AuthenticatedPreparationsPreparationIdEinteilenRoute
   '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
   '/api/events/$eventId/result': typeof ApiEventsEventIdResultRoute
   '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
+  '/api/preparations/$preparationId/players': typeof ApiPreparationsPreparationIdPlayersRouteWithChildren
+  '/preparations/$preparationId/': typeof AuthenticatedPreparationsPreparationIdIndexRoute
+  '/preparations/$preparationId/$group/$unitId': typeof AuthenticatedPreparationsPreparationIdGroupUnitIdRoute
   '/api/players/$playerId/groups/$groupId': typeof ApiPlayersPlayerIdGroupsGroupIdRoute
+  '/api/preparation-units/$unitId/players/$playerId': typeof ApiPreparationUnitsUnitIdPlayersPlayerIdRouteWithChildren
+  '/api/preparations/$preparationId/groups/$group': typeof ApiPreparationsPreparationIdGroupsGroupRoute
+  '/api/preparations/$preparationId/players/$playerId': typeof ApiPreparationsPreparationIdPlayersPlayerIdRoute
+  '/preparations/$preparationId/$group/': typeof AuthenticatedPreparationsPreparationIdGroupIndexRoute
+  '/api/preparation-units/$unitId/players/$playerId/review': typeof ApiPreparationUnitsUnitIdPlayersPlayerIdReviewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -348,18 +483,34 @@ export interface FileRoutesByTo {
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
   '/api/player/penalty': typeof ApiPlayerPenaltyRoute
+  '/api/player/preparation-decline': typeof ApiPlayerPreparationDeclineRoute
+  '/api/player/preparation-done': typeof ApiPlayerPreparationDoneRoute
+  '/api/player/preparation-entry': typeof ApiPlayerPreparationEntryRoute
   '/api/player/team': typeof ApiPlayerTeamRoute
   '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
+  '/api/preparation-units/$unitId': typeof ApiPreparationUnitsUnitIdRouteWithChildren
+  '/api/preparations/$preparationId': typeof ApiPreparationsPreparationIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
   '/events': typeof AuthenticatedEventsIndexRoute
   '/groups': typeof AuthenticatedGroupsIndexRoute
+  '/preparations': typeof AuthenticatedPreparationsIndexRoute
   '/api/events': typeof ApiEventsIndexRoute
   '/api/groups': typeof ApiGroupsIndexRoute
+  '/api/preparations': typeof ApiPreparationsIndexRoute
+  '/preparations/$preparationId/einteilen': typeof AuthenticatedPreparationsPreparationIdEinteilenRoute
   '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
   '/api/events/$eventId/result': typeof ApiEventsEventIdResultRoute
   '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
+  '/api/preparations/$preparationId/players': typeof ApiPreparationsPreparationIdPlayersRouteWithChildren
+  '/preparations/$preparationId': typeof AuthenticatedPreparationsPreparationIdIndexRoute
+  '/preparations/$preparationId/$group/$unitId': typeof AuthenticatedPreparationsPreparationIdGroupUnitIdRoute
   '/api/players/$playerId/groups/$groupId': typeof ApiPlayersPlayerIdGroupsGroupIdRoute
+  '/api/preparation-units/$unitId/players/$playerId': typeof ApiPreparationUnitsUnitIdPlayersPlayerIdRouteWithChildren
+  '/api/preparations/$preparationId/groups/$group': typeof ApiPreparationsPreparationIdGroupsGroupRoute
+  '/api/preparations/$preparationId/players/$playerId': typeof ApiPreparationsPreparationIdPlayersPlayerIdRoute
+  '/preparations/$preparationId/$group': typeof AuthenticatedPreparationsPreparationIdGroupIndexRoute
+  '/api/preparation-units/$unitId/players/$playerId/review': typeof ApiPreparationUnitsUnitIdPlayersPlayerIdReviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -371,6 +522,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/events': typeof AuthenticatedEventsRouteWithChildren
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
+  '/_authenticated/preparations': typeof AuthenticatedPreparationsRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/statistics': typeof AuthenticatedStatisticsRoute
   '/api/players': typeof ApiPlayersRouteWithChildren
@@ -394,18 +546,34 @@ export interface FileRoutesById {
   '/api/player/overview': typeof ApiPlayerOverviewRoute
   '/api/player/penalties': typeof ApiPlayerPenaltiesRoute
   '/api/player/penalty': typeof ApiPlayerPenaltyRoute
+  '/api/player/preparation-decline': typeof ApiPlayerPreparationDeclineRoute
+  '/api/player/preparation-done': typeof ApiPlayerPreparationDoneRoute
+  '/api/player/preparation-entry': typeof ApiPlayerPreparationEntryRoute
   '/api/player/team': typeof ApiPlayerTeamRoute
   '/api/players/$playerId': typeof ApiPlayersPlayerIdRouteWithChildren
+  '/api/preparation-units/$unitId': typeof ApiPreparationUnitsUnitIdRouteWithChildren
+  '/api/preparations/$preparationId': typeof ApiPreparationsPreparationIdRouteWithChildren
   '/api/stats/attendance': typeof ApiStatsAttendanceRoute
   '/api/stats/dashboard': typeof ApiStatsDashboardRoute
   '/_authenticated/events/': typeof AuthenticatedEventsIndexRoute
   '/_authenticated/groups/': typeof AuthenticatedGroupsIndexRoute
+  '/_authenticated/preparations/': typeof AuthenticatedPreparationsIndexRoute
   '/api/events/': typeof ApiEventsIndexRoute
   '/api/groups/': typeof ApiGroupsIndexRoute
+  '/api/preparations/': typeof ApiPreparationsIndexRoute
+  '/_authenticated/preparations/$preparationId/einteilen': typeof AuthenticatedPreparationsPreparationIdEinteilenRoute
   '/api/events/$eventId/attendances': typeof ApiEventsEventIdAttendancesRoute
   '/api/events/$eventId/result': typeof ApiEventsEventIdResultRoute
   '/api/groups/$groupId/players': typeof ApiGroupsGroupIdPlayersRoute
+  '/api/preparations/$preparationId/players': typeof ApiPreparationsPreparationIdPlayersRouteWithChildren
+  '/_authenticated/preparations/$preparationId/': typeof AuthenticatedPreparationsPreparationIdIndexRoute
+  '/_authenticated/preparations/$preparationId/$group/$unitId': typeof AuthenticatedPreparationsPreparationIdGroupUnitIdRoute
   '/api/players/$playerId/groups/$groupId': typeof ApiPlayersPlayerIdGroupsGroupIdRoute
+  '/api/preparation-units/$unitId/players/$playerId': typeof ApiPreparationUnitsUnitIdPlayersPlayerIdRouteWithChildren
+  '/api/preparations/$preparationId/groups/$group': typeof ApiPreparationsPreparationIdGroupsGroupRoute
+  '/api/preparations/$preparationId/players/$playerId': typeof ApiPreparationsPreparationIdPlayersPlayerIdRoute
+  '/_authenticated/preparations/$preparationId/$group/': typeof AuthenticatedPreparationsPreparationIdGroupIndexRoute
+  '/api/preparation-units/$unitId/players/$playerId/review': typeof ApiPreparationUnitsUnitIdPlayersPlayerIdReviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -417,6 +585,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/events'
     | '/groups'
+    | '/preparations'
     | '/settings'
     | '/statistics'
     | '/api/players'
@@ -440,18 +609,34 @@ export interface FileRouteTypes {
     | '/api/player/overview'
     | '/api/player/penalties'
     | '/api/player/penalty'
+    | '/api/player/preparation-decline'
+    | '/api/player/preparation-done'
+    | '/api/player/preparation-entry'
     | '/api/player/team'
     | '/api/players/$playerId'
+    | '/api/preparation-units/$unitId'
+    | '/api/preparations/$preparationId'
     | '/api/stats/attendance'
     | '/api/stats/dashboard'
     | '/events/'
     | '/groups/'
+    | '/preparations/'
     | '/api/events/'
     | '/api/groups/'
+    | '/api/preparations/'
+    | '/preparations/$preparationId/einteilen'
     | '/api/events/$eventId/attendances'
     | '/api/events/$eventId/result'
     | '/api/groups/$groupId/players'
+    | '/api/preparations/$preparationId/players'
+    | '/preparations/$preparationId/'
+    | '/preparations/$preparationId/$group/$unitId'
     | '/api/players/$playerId/groups/$groupId'
+    | '/api/preparation-units/$unitId/players/$playerId'
+    | '/api/preparations/$preparationId/groups/$group'
+    | '/api/preparations/$preparationId/players/$playerId'
+    | '/preparations/$preparationId/$group/'
+    | '/api/preparation-units/$unitId/players/$playerId/review'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -482,18 +667,34 @@ export interface FileRouteTypes {
     | '/api/player/overview'
     | '/api/player/penalties'
     | '/api/player/penalty'
+    | '/api/player/preparation-decline'
+    | '/api/player/preparation-done'
+    | '/api/player/preparation-entry'
     | '/api/player/team'
     | '/api/players/$playerId'
+    | '/api/preparation-units/$unitId'
+    | '/api/preparations/$preparationId'
     | '/api/stats/attendance'
     | '/api/stats/dashboard'
     | '/events'
     | '/groups'
+    | '/preparations'
     | '/api/events'
     | '/api/groups'
+    | '/api/preparations'
+    | '/preparations/$preparationId/einteilen'
     | '/api/events/$eventId/attendances'
     | '/api/events/$eventId/result'
     | '/api/groups/$groupId/players'
+    | '/api/preparations/$preparationId/players'
+    | '/preparations/$preparationId'
+    | '/preparations/$preparationId/$group/$unitId'
     | '/api/players/$playerId/groups/$groupId'
+    | '/api/preparation-units/$unitId/players/$playerId'
+    | '/api/preparations/$preparationId/groups/$group'
+    | '/api/preparations/$preparationId/players/$playerId'
+    | '/preparations/$preparationId/$group'
+    | '/api/preparation-units/$unitId/players/$playerId/review'
   id:
     | '__root__'
     | '/'
@@ -504,6 +705,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/events'
     | '/_authenticated/groups'
+    | '/_authenticated/preparations'
     | '/_authenticated/settings'
     | '/_authenticated/statistics'
     | '/api/players'
@@ -527,18 +729,34 @@ export interface FileRouteTypes {
     | '/api/player/overview'
     | '/api/player/penalties'
     | '/api/player/penalty'
+    | '/api/player/preparation-decline'
+    | '/api/player/preparation-done'
+    | '/api/player/preparation-entry'
     | '/api/player/team'
     | '/api/players/$playerId'
+    | '/api/preparation-units/$unitId'
+    | '/api/preparations/$preparationId'
     | '/api/stats/attendance'
     | '/api/stats/dashboard'
     | '/_authenticated/events/'
     | '/_authenticated/groups/'
+    | '/_authenticated/preparations/'
     | '/api/events/'
     | '/api/groups/'
+    | '/api/preparations/'
+    | '/_authenticated/preparations/$preparationId/einteilen'
     | '/api/events/$eventId/attendances'
     | '/api/events/$eventId/result'
     | '/api/groups/$groupId/players'
+    | '/api/preparations/$preparationId/players'
+    | '/_authenticated/preparations/$preparationId/'
+    | '/_authenticated/preparations/$preparationId/$group/$unitId'
     | '/api/players/$playerId/groups/$groupId'
+    | '/api/preparation-units/$unitId/players/$playerId'
+    | '/api/preparations/$preparationId/groups/$group'
+    | '/api/preparations/$preparationId/players/$playerId'
+    | '/_authenticated/preparations/$preparationId/$group/'
+    | '/api/preparation-units/$unitId/players/$playerId/review'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -566,11 +784,17 @@ export interface RootRouteChildren {
   ApiPlayerOverviewRoute: typeof ApiPlayerOverviewRoute
   ApiPlayerPenaltiesRoute: typeof ApiPlayerPenaltiesRoute
   ApiPlayerPenaltyRoute: typeof ApiPlayerPenaltyRoute
+  ApiPlayerPreparationDeclineRoute: typeof ApiPlayerPreparationDeclineRoute
+  ApiPlayerPreparationDoneRoute: typeof ApiPlayerPreparationDoneRoute
+  ApiPlayerPreparationEntryRoute: typeof ApiPlayerPreparationEntryRoute
   ApiPlayerTeamRoute: typeof ApiPlayerTeamRoute
+  ApiPreparationUnitsUnitIdRoute: typeof ApiPreparationUnitsUnitIdRouteWithChildren
+  ApiPreparationsPreparationIdRoute: typeof ApiPreparationsPreparationIdRouteWithChildren
   ApiStatsAttendanceRoute: typeof ApiStatsAttendanceRoute
   ApiStatsDashboardRoute: typeof ApiStatsDashboardRoute
   ApiEventsIndexRoute: typeof ApiEventsIndexRoute
   ApiGroupsIndexRoute: typeof ApiGroupsIndexRoute
+  ApiPreparationsIndexRoute: typeof ApiPreparationsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -652,6 +876,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/preparations': {
+      id: '/_authenticated/preparations'
+      path: '/preparations'
+      fullPath: '/preparations'
+      preLoaderRoute: typeof AuthenticatedPreparationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/groups': {
       id: '/_authenticated/groups'
       path: '/groups'
@@ -673,6 +904,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/preparations/': {
+      id: '/api/preparations/'
+      path: '/api/preparations'
+      fullPath: '/api/preparations/'
+      preLoaderRoute: typeof ApiPreparationsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/groups/': {
       id: '/api/groups/'
       path: '/api/groups'
@@ -686,6 +924,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/events/'
       preLoaderRoute: typeof ApiEventsIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/preparations/': {
+      id: '/_authenticated/preparations/'
+      path: '/'
+      fullPath: '/preparations/'
+      preLoaderRoute: typeof AuthenticatedPreparationsIndexRouteImport
+      parentRoute: typeof AuthenticatedPreparationsRoute
     }
     '/_authenticated/groups/': {
       id: '/_authenticated/groups/'
@@ -715,6 +960,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStatsAttendanceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/preparations/$preparationId': {
+      id: '/api/preparations/$preparationId'
+      path: '/api/preparations/$preparationId'
+      fullPath: '/api/preparations/$preparationId'
+      preLoaderRoute: typeof ApiPreparationsPreparationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/preparation-units/$unitId': {
+      id: '/api/preparation-units/$unitId'
+      path: '/api/preparation-units/$unitId'
+      fullPath: '/api/preparation-units/$unitId'
+      preLoaderRoute: typeof ApiPreparationUnitsUnitIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/players/$playerId': {
       id: '/api/players/$playerId'
       path: '/$playerId'
@@ -727,6 +986,27 @@ declare module '@tanstack/react-router' {
       path: '/api/player/team'
       fullPath: '/api/player/team'
       preLoaderRoute: typeof ApiPlayerTeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player/preparation-entry': {
+      id: '/api/player/preparation-entry'
+      path: '/api/player/preparation-entry'
+      fullPath: '/api/player/preparation-entry'
+      preLoaderRoute: typeof ApiPlayerPreparationEntryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player/preparation-done': {
+      id: '/api/player/preparation-done'
+      path: '/api/player/preparation-done'
+      fullPath: '/api/player/preparation-done'
+      preLoaderRoute: typeof ApiPlayerPreparationDoneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player/preparation-decline': {
+      id: '/api/player/preparation-decline'
+      path: '/api/player/preparation-decline'
+      fullPath: '/api/player/preparation-decline'
+      preLoaderRoute: typeof ApiPlayerPreparationDeclineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/player/penalty': {
@@ -848,6 +1128,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEventsEventIdRouteImport
       parentRoute: typeof AuthenticatedEventsRoute
     }
+    '/_authenticated/preparations/$preparationId/': {
+      id: '/_authenticated/preparations/$preparationId/'
+      path: '/$preparationId'
+      fullPath: '/preparations/$preparationId/'
+      preLoaderRoute: typeof AuthenticatedPreparationsPreparationIdIndexRouteImport
+      parentRoute: typeof AuthenticatedPreparationsRoute
+    }
+    '/api/preparations/$preparationId/players': {
+      id: '/api/preparations/$preparationId/players'
+      path: '/players'
+      fullPath: '/api/preparations/$preparationId/players'
+      preLoaderRoute: typeof ApiPreparationsPreparationIdPlayersRouteImport
+      parentRoute: typeof ApiPreparationsPreparationIdRoute
+    }
     '/api/groups/$groupId/players': {
       id: '/api/groups/$groupId/players'
       path: '/players'
@@ -869,12 +1163,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEventsEventIdAttendancesRouteImport
       parentRoute: typeof ApiEventsEventIdRoute
     }
+    '/_authenticated/preparations/$preparationId/einteilen': {
+      id: '/_authenticated/preparations/$preparationId/einteilen'
+      path: '/$preparationId/einteilen'
+      fullPath: '/preparations/$preparationId/einteilen'
+      preLoaderRoute: typeof AuthenticatedPreparationsPreparationIdEinteilenRouteImport
+      parentRoute: typeof AuthenticatedPreparationsRoute
+    }
+    '/_authenticated/preparations/$preparationId/$group/': {
+      id: '/_authenticated/preparations/$preparationId/$group/'
+      path: '/$preparationId/$group'
+      fullPath: '/preparations/$preparationId/$group/'
+      preLoaderRoute: typeof AuthenticatedPreparationsPreparationIdGroupIndexRouteImport
+      parentRoute: typeof AuthenticatedPreparationsRoute
+    }
+    '/api/preparations/$preparationId/players/$playerId': {
+      id: '/api/preparations/$preparationId/players/$playerId'
+      path: '/$playerId'
+      fullPath: '/api/preparations/$preparationId/players/$playerId'
+      preLoaderRoute: typeof ApiPreparationsPreparationIdPlayersPlayerIdRouteImport
+      parentRoute: typeof ApiPreparationsPreparationIdPlayersRoute
+    }
+    '/api/preparations/$preparationId/groups/$group': {
+      id: '/api/preparations/$preparationId/groups/$group'
+      path: '/groups/$group'
+      fullPath: '/api/preparations/$preparationId/groups/$group'
+      preLoaderRoute: typeof ApiPreparationsPreparationIdGroupsGroupRouteImport
+      parentRoute: typeof ApiPreparationsPreparationIdRoute
+    }
+    '/api/preparation-units/$unitId/players/$playerId': {
+      id: '/api/preparation-units/$unitId/players/$playerId'
+      path: '/players/$playerId'
+      fullPath: '/api/preparation-units/$unitId/players/$playerId'
+      preLoaderRoute: typeof ApiPreparationUnitsUnitIdPlayersPlayerIdRouteImport
+      parentRoute: typeof ApiPreparationUnitsUnitIdRoute
+    }
     '/api/players/$playerId/groups/$groupId': {
       id: '/api/players/$playerId/groups/$groupId'
       path: '/groups/$groupId'
       fullPath: '/api/players/$playerId/groups/$groupId'
       preLoaderRoute: typeof ApiPlayersPlayerIdGroupsGroupIdRouteImport
       parentRoute: typeof ApiPlayersPlayerIdRoute
+    }
+    '/_authenticated/preparations/$preparationId/$group/$unitId': {
+      id: '/_authenticated/preparations/$preparationId/$group/$unitId'
+      path: '/$preparationId/$group/$unitId'
+      fullPath: '/preparations/$preparationId/$group/$unitId'
+      preLoaderRoute: typeof AuthenticatedPreparationsPreparationIdGroupUnitIdRouteImport
+      parentRoute: typeof AuthenticatedPreparationsRoute
+    }
+    '/api/preparation-units/$unitId/players/$playerId/review': {
+      id: '/api/preparation-units/$unitId/players/$playerId/review'
+      path: '/review'
+      fullPath: '/api/preparation-units/$unitId/players/$playerId/review'
+      preLoaderRoute: typeof ApiPreparationUnitsUnitIdPlayersPlayerIdReviewRouteImport
+      parentRoute: typeof ApiPreparationUnitsUnitIdPlayersPlayerIdRoute
     }
   }
 }
@@ -905,10 +1248,37 @@ const AuthenticatedGroupsRouteChildren: AuthenticatedGroupsRouteChildren = {
 const AuthenticatedGroupsRouteWithChildren =
   AuthenticatedGroupsRoute._addFileChildren(AuthenticatedGroupsRouteChildren)
 
+interface AuthenticatedPreparationsRouteChildren {
+  AuthenticatedPreparationsIndexRoute: typeof AuthenticatedPreparationsIndexRoute
+  AuthenticatedPreparationsPreparationIdEinteilenRoute: typeof AuthenticatedPreparationsPreparationIdEinteilenRoute
+  AuthenticatedPreparationsPreparationIdIndexRoute: typeof AuthenticatedPreparationsPreparationIdIndexRoute
+  AuthenticatedPreparationsPreparationIdGroupUnitIdRoute: typeof AuthenticatedPreparationsPreparationIdGroupUnitIdRoute
+  AuthenticatedPreparationsPreparationIdGroupIndexRoute: typeof AuthenticatedPreparationsPreparationIdGroupIndexRoute
+}
+
+const AuthenticatedPreparationsRouteChildren: AuthenticatedPreparationsRouteChildren =
+  {
+    AuthenticatedPreparationsIndexRoute: AuthenticatedPreparationsIndexRoute,
+    AuthenticatedPreparationsPreparationIdEinteilenRoute:
+      AuthenticatedPreparationsPreparationIdEinteilenRoute,
+    AuthenticatedPreparationsPreparationIdIndexRoute:
+      AuthenticatedPreparationsPreparationIdIndexRoute,
+    AuthenticatedPreparationsPreparationIdGroupUnitIdRoute:
+      AuthenticatedPreparationsPreparationIdGroupUnitIdRoute,
+    AuthenticatedPreparationsPreparationIdGroupIndexRoute:
+      AuthenticatedPreparationsPreparationIdGroupIndexRoute,
+  }
+
+const AuthenticatedPreparationsRouteWithChildren =
+  AuthenticatedPreparationsRoute._addFileChildren(
+    AuthenticatedPreparationsRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEventsRoute: typeof AuthenticatedEventsRouteWithChildren
   AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
+  AuthenticatedPreparationsRoute: typeof AuthenticatedPreparationsRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedStatisticsRoute: typeof AuthenticatedStatisticsRoute
 }
@@ -917,6 +1287,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEventsRoute: AuthenticatedEventsRouteWithChildren,
   AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
+  AuthenticatedPreparationsRoute: AuthenticatedPreparationsRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedStatisticsRoute: AuthenticatedStatisticsRoute,
 }
@@ -971,6 +1342,69 @@ const ApiGroupsGroupIdRouteChildren: ApiGroupsGroupIdRouteChildren = {
 const ApiGroupsGroupIdRouteWithChildren =
   ApiGroupsGroupIdRoute._addFileChildren(ApiGroupsGroupIdRouteChildren)
 
+interface ApiPreparationUnitsUnitIdPlayersPlayerIdRouteChildren {
+  ApiPreparationUnitsUnitIdPlayersPlayerIdReviewRoute: typeof ApiPreparationUnitsUnitIdPlayersPlayerIdReviewRoute
+}
+
+const ApiPreparationUnitsUnitIdPlayersPlayerIdRouteChildren: ApiPreparationUnitsUnitIdPlayersPlayerIdRouteChildren =
+  {
+    ApiPreparationUnitsUnitIdPlayersPlayerIdReviewRoute:
+      ApiPreparationUnitsUnitIdPlayersPlayerIdReviewRoute,
+  }
+
+const ApiPreparationUnitsUnitIdPlayersPlayerIdRouteWithChildren =
+  ApiPreparationUnitsUnitIdPlayersPlayerIdRoute._addFileChildren(
+    ApiPreparationUnitsUnitIdPlayersPlayerIdRouteChildren,
+  )
+
+interface ApiPreparationUnitsUnitIdRouteChildren {
+  ApiPreparationUnitsUnitIdPlayersPlayerIdRoute: typeof ApiPreparationUnitsUnitIdPlayersPlayerIdRouteWithChildren
+}
+
+const ApiPreparationUnitsUnitIdRouteChildren: ApiPreparationUnitsUnitIdRouteChildren =
+  {
+    ApiPreparationUnitsUnitIdPlayersPlayerIdRoute:
+      ApiPreparationUnitsUnitIdPlayersPlayerIdRouteWithChildren,
+  }
+
+const ApiPreparationUnitsUnitIdRouteWithChildren =
+  ApiPreparationUnitsUnitIdRoute._addFileChildren(
+    ApiPreparationUnitsUnitIdRouteChildren,
+  )
+
+interface ApiPreparationsPreparationIdPlayersRouteChildren {
+  ApiPreparationsPreparationIdPlayersPlayerIdRoute: typeof ApiPreparationsPreparationIdPlayersPlayerIdRoute
+}
+
+const ApiPreparationsPreparationIdPlayersRouteChildren: ApiPreparationsPreparationIdPlayersRouteChildren =
+  {
+    ApiPreparationsPreparationIdPlayersPlayerIdRoute:
+      ApiPreparationsPreparationIdPlayersPlayerIdRoute,
+  }
+
+const ApiPreparationsPreparationIdPlayersRouteWithChildren =
+  ApiPreparationsPreparationIdPlayersRoute._addFileChildren(
+    ApiPreparationsPreparationIdPlayersRouteChildren,
+  )
+
+interface ApiPreparationsPreparationIdRouteChildren {
+  ApiPreparationsPreparationIdPlayersRoute: typeof ApiPreparationsPreparationIdPlayersRouteWithChildren
+  ApiPreparationsPreparationIdGroupsGroupRoute: typeof ApiPreparationsPreparationIdGroupsGroupRoute
+}
+
+const ApiPreparationsPreparationIdRouteChildren: ApiPreparationsPreparationIdRouteChildren =
+  {
+    ApiPreparationsPreparationIdPlayersRoute:
+      ApiPreparationsPreparationIdPlayersRouteWithChildren,
+    ApiPreparationsPreparationIdGroupsGroupRoute:
+      ApiPreparationsPreparationIdGroupsGroupRoute,
+  }
+
+const ApiPreparationsPreparationIdRouteWithChildren =
+  ApiPreparationsPreparationIdRoute._addFileChildren(
+    ApiPreparationsPreparationIdRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -996,11 +1430,18 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPlayerOverviewRoute: ApiPlayerOverviewRoute,
   ApiPlayerPenaltiesRoute: ApiPlayerPenaltiesRoute,
   ApiPlayerPenaltyRoute: ApiPlayerPenaltyRoute,
+  ApiPlayerPreparationDeclineRoute: ApiPlayerPreparationDeclineRoute,
+  ApiPlayerPreparationDoneRoute: ApiPlayerPreparationDoneRoute,
+  ApiPlayerPreparationEntryRoute: ApiPlayerPreparationEntryRoute,
   ApiPlayerTeamRoute: ApiPlayerTeamRoute,
+  ApiPreparationUnitsUnitIdRoute: ApiPreparationUnitsUnitIdRouteWithChildren,
+  ApiPreparationsPreparationIdRoute:
+    ApiPreparationsPreparationIdRouteWithChildren,
   ApiStatsAttendanceRoute: ApiStatsAttendanceRoute,
   ApiStatsDashboardRoute: ApiStatsDashboardRoute,
   ApiEventsIndexRoute: ApiEventsIndexRoute,
   ApiGroupsIndexRoute: ApiGroupsIndexRoute,
+  ApiPreparationsIndexRoute: ApiPreparationsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

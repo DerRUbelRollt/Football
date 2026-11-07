@@ -216,6 +216,202 @@ namespace TeamCompass.Api.Data.Migrations
                     b.ToTable("PlayerGroupMemberships");
                 });
 
+            modelBuilder.Entity("TeamCompass.Api.Models.Preparation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("GroupId")
+                        .HasColumnType("integer");
+
+                    b.PrimitiveCollection<List<string>>("Rules")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<int>("RunsPerWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.ToTable("Preparations");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("PaceGroup")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("PlayerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PreparationId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerId");
+
+                    b.HasIndex("PreparationId", "PlayerId")
+                        .IsUnique();
+
+                    b.ToTable("PreparationAssignments");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Confirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("DeclineReason")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PlayerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PreparationUnitId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TrainerComment")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerId");
+
+                    b.HasIndex("PreparationUnitId", "PlayerId")
+                        .IsUnique();
+
+                    b.ToTable("PreparationEntries");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationEntryImage", b =>
+                {
+                    b.Property<int>("EntryId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("EntryId");
+
+                    b.ToTable("PreparationEntryImages");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationUnit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("DistanceKm")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<int>("PreparationWeekId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RunNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PreparationWeekId", "RunNumber")
+                        .IsUnique();
+
+                    b.ToTable("PreparationUnits");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationWeek", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("EndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PaceASec")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PaceBSec")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PaceCSec")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PreparationId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("StartsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PreparationId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("PreparationWeeks");
+                });
+
             modelBuilder.Entity("TeamCompass.Api.Models.Trainer", b =>
                 {
                     b.Property<int>("Id")
@@ -302,6 +498,88 @@ namespace TeamCompass.Api.Data.Migrations
                     b.Navigation("Player");
                 });
 
+            modelBuilder.Entity("TeamCompass.Api.Models.Preparation", b =>
+                {
+                    b.HasOne("TeamCompass.Api.Models.Group", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationAssignment", b =>
+                {
+                    b.HasOne("TeamCompass.Api.Models.Player", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TeamCompass.Api.Models.Preparation", "Preparation")
+                        .WithMany()
+                        .HasForeignKey("PreparationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Player");
+
+                    b.Navigation("Preparation");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationEntry", b =>
+                {
+                    b.HasOne("TeamCompass.Api.Models.Player", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TeamCompass.Api.Models.PreparationUnit", "Unit")
+                        .WithMany()
+                        .HasForeignKey("PreparationUnitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Player");
+
+                    b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationEntryImage", b =>
+                {
+                    b.HasOne("TeamCompass.Api.Models.PreparationEntry", "Entry")
+                        .WithOne("Image")
+                        .HasForeignKey("TeamCompass.Api.Models.PreparationEntryImage", "EntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationUnit", b =>
+                {
+                    b.HasOne("TeamCompass.Api.Models.PreparationWeek", "Week")
+                        .WithMany("Units")
+                        .HasForeignKey("PreparationWeekId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Week");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationWeek", b =>
+                {
+                    b.HasOne("TeamCompass.Api.Models.Preparation", "Preparation")
+                        .WithMany("Weeks")
+                        .HasForeignKey("PreparationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Preparation");
+                });
+
             modelBuilder.Entity("TeamCompass.Api.Models.Group", b =>
                 {
                     b.Navigation("PlayerMemberships");
@@ -310,6 +588,21 @@ namespace TeamCompass.Api.Data.Migrations
             modelBuilder.Entity("TeamCompass.Api.Models.Player", b =>
                 {
                     b.Navigation("GroupMemberships");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.Preparation", b =>
+                {
+                    b.Navigation("Weeks");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationEntry", b =>
+                {
+                    b.Navigation("Image");
+                });
+
+            modelBuilder.Entity("TeamCompass.Api.Models.PreparationWeek", b =>
+                {
+                    b.Navigation("Units");
                 });
 #pragma warning restore 612, 618
         }

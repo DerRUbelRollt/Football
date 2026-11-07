@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TeamCompass.Api.Data;
 using TeamCompass.Api.Models;
+using TeamCompass.Api.Services;
 
 namespace TeamCompass.Api.Controllers;
 
@@ -54,10 +55,47 @@ public class PlayerController : ControllerBase
             .ToList();
         bool IsActive(Event e, string answer) => now < e.MeetingActiveUntil(answer == "accepted");
 
+        // Vorbereitungs-Ereignisse: aktiv bis Wochenende (Sonntag 23:59), danach in der Historie.
+        var prepViews = await PreparationParticipants.ForPlayerAsync(_ctx, player.Id, groupIds, now);
+        var prepList = prepViews
+            .Where(pv => pv.Units.Any(u => u.EndsAt > now))
+            .Select(pv => new
+            {
+                id = pv.Id,
+                title = pv.Title,
+                rules = pv.Rules,
+                pace_group = pv.PaceGroup,
+                units = pv.Units.Where(u => u.EndsAt > now).Select(u => new
+                {
+                    id = u.Id,
+                    week_number = u.WeekNumber,
+                    run_number = u.RunNumber,
+                    starts_at = u.StartsAt,
+                    ends_at = u.EndsAt,
+                    distance_km = u.DistanceKm,
+                    pace_sec = u.PaceSec,
+                    status = u.Status,
+                    confirmed = u.Confirmed,
+                    trainer_comment = u.TrainerComment,
+                    decline_reason = u.DeclineReason,
+                    has_image = u.HasImage
+                }).ToList()
+            })
+            .ToList();
+
         var upList = upcoming.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, opponent = e.Opponent, home_away = e.HomeAway, location = e.Location, meeting_point = e.MeetingPoint, event_at = e.EventAt, description = e.Description, max_guests = e.MaxGuests, with_food = e.WithFood, deadline_at = e.DeadlineAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).ToList().Select(a => new { id = a.Id, status = a.Status, player_id = a.PlayerId, meal = a.Meal, guests = a.GuestEntries() }).ToList() }).ToList();
         var meetList = meetings.Where(m => IsActive(m.Event, m.Answer)).Select(m => new { id = m.Event.Id, event_type = m.Event.EventType, title = m.Event.Title, location = m.Event.Location, description = m.Event.Description, event_at = m.Event.EventAt, proposed_times = m.Event.ProposedTimes, meeting_status = Event.MeetingStatusOf(m.Answer) }).ToList();
-        var histList = history.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, event_at = e.EventAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { status = a.Status, player_id = a.PlayerId }).ToList() })
-            .Concat(meetings.Where(m => !IsActive(m.Event, m.Answer)).Select(m => new { id = m.Event.Id, event_type = m.Event.EventType, title = m.Event.Title, event_at = m.Event.EventAt, attendances = new[] { new { status = m.Answer, player_id = player.Id } }.ToList() }))
+        var histList = history.Select(e => new { id = e.Id, event_type = e.EventType, title = e.Title, event_at = e.EventAt, attendances = _ctx.Attendances.Where(a => a.EventId == e.Id && a.PlayerId == player.Id).Select(a => new { status = a.Status, player_id = a.PlayerId }).ToList(), preparation_status = (string?)null })
+            .Concat(meetings.Where(m => !IsActive(m.Event, m.Answer)).Select(m => new { id = m.Event.Id, event_type = m.Event.EventType, title = m.Event.Title, event_at = m.Event.EventAt, attendances = new[] { new { status = m.Answer, player_id = player.Id } }.ToList(), preparation_status = (string?)null }))
+            .Concat(prepViews.SelectMany(pv => pv.Units.Where(u => u.EndsAt <= now).Select(u => new
+            {
+                id = u.Id,
+                event_type = "preparation",
+                title = $"{pv.Title} · Woche {u.WeekNumber} · Training {u.RunNumber}",
+                event_at = u.EndsAt,
+                attendances = new[] { new { status = PreparationAttendanceStatus(u.Status), player_id = player.Id } }.ToList(),
+                preparation_status = (string?)PreparationHistoryStatus(u)
+            })))
             .OrderByDescending(h => h.event_at)
             .Take(50)
             .ToList();
@@ -65,8 +103,24 @@ public class PlayerController : ControllerBase
         var firstMembership = player.GroupMemberships.OrderBy(m => m.GroupId).FirstOrDefault();
         var p = new { id = player.Id, first_name = player.FirstName, last_name = player.LastName, player_code = player.PlayerCode, group_id = firstMembership?.GroupId ?? 0, player_penalty = player.PlayerPenalty, beer_crates = player.BeerCrates, penalty_manager = player.PenaltyManager, groups = player.GroupMemberships.Select(m => new { name = m.Group!.Name }).ToList() };
 
-        return Ok(new { player = p, upcoming = upList, meetings = meetList, history = histList });
+        return Ok(new { player = p, upcoming = upList, meetings = meetList, preparations = prepList, history = histList });
     }
+
+    private static string PreparationAttendanceStatus(string status) => status switch
+    {
+        PreparationEntry.DoneStatus => "accepted",
+        PreparationEntry.DeclinedStatus => "declined",
+        _ => "pending"
+    };
+
+    // Stand eines abgelaufenen Vorbereitungs-Ereignisses in der Historie des Spielers.
+    private static string PreparationHistoryStatus(PlayerPreparationUnitView u) => u.Status switch
+    {
+        PreparationEntry.DoneStatus => u.Confirmed ? "confirmed" : "done",
+        PreparationEntry.DeclinedStatus => "declined",
+        // Vom Trainer abgelehnt und nicht mehr neu eingereicht.
+        _ => u.TrainerComment != null ? "rejected" : "missed"
+    };
 
     // Einzelgespräch: der Spieler legt einen der vorgeschlagenen Termine fest (danach unveränderlich)
     // oder meldet "Keiner passt" – dann wartet er, bis der Trainer neue Termine einträgt.

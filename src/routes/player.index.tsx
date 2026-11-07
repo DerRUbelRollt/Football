@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, type EventGuest, type Meal, type PlayerMeeting, type PlayerUpcomingEvent } from "@/lib/api-client";
+import { api, ApiError, type EventGuest, type Meal, type PlayerMeeting, type PlayerUpcomingEvent, type PreparationHistoryStatus } from "@/lib/api-client";
+import { PREP_HISTORY_META } from "@/lib/preparation";
+import { PreparationSections } from "@/components/preparation-player-section";
 import { getPlayerCode, clearPlayerCode } from "@/lib/player-session";
 import { formatPenaltyBalance } from "@/lib/penalty-format";
 import { eventTypeLabel } from "@/lib/event-type";
@@ -182,6 +184,9 @@ function PlayerHome() {
           </section>
         )}
 
+        {/* Vorbereitungs-Ereignisse (Laufplan) unter dem Einzelgespräch, über den kommenden Ereignissen. */}
+        <PreparationSections code={code} preparations={q.data!.preparations ?? []} />
+
         <section>
           <h2 className="font-bold text-lg mb-3">Kommende Ereignisse</h2>
           {upcoming.length === 0 ? (
@@ -288,7 +293,8 @@ function PlayerHome() {
             <h2 className="font-bold text-lg mb-3">Deine Historie</h2>
             <div className="card-elevated divide-y divide-border">
               {history.slice(0, 20).map((h) => (
-                <div key={h.id} className="flex items-center gap-3 p-4">
+                // IDs von Ereignissen und Vorbereitungs-Einheiten können sich überschneiden.
+                <div key={`${h.event_type}-${h.id}`} className="flex items-center gap-3 p-4">
                   <EventTypeIcon type={h.event_type} className="h-8 w-8 rounded-lg" iconClassName="h-4 w-4" />
                   <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">{h.title}</div>
@@ -296,7 +302,9 @@ function PlayerHome() {
                   </div>
                   {h.event_type === "meeting"
                     ? <MeetingHistoryBadge status={h.attendances[0]?.status} />
-                    : <StatusBadge status={h.attendances[0]?.status} />}
+                    : h.event_type === "preparation"
+                      ? <PreparationHistoryBadge status={h.preparation_status} />
+                      : <StatusBadge status={h.attendances[0]?.status} />}
                 </div>
               ))}
             </div>
@@ -457,6 +465,12 @@ function StatusBadge({ status }: { status: string }) {
     pending: { color: "text-muted-foreground bg-secondary", label: "Offen" },
   }[status as "accepted" | "declined" | "pending"] ?? { color: "text-muted-foreground bg-secondary", label: "–" };
   return <span className={`text-xs px-2 py-1 rounded-full font-semibold ${cfg.color}`}>{cfg.label}</span>;
+}
+
+// Abgelaufenes Vorbereitungs-Ereignis: bestätigt, erledigt, abgesagt, verpasst oder nicht bestätigt.
+function PreparationHistoryBadge({ status }: { status: PreparationHistoryStatus | null | undefined }) {
+  const cfg = status ? PREP_HISTORY_META[status] : PREP_HISTORY_META.missed;
+  return <span className={`text-xs px-2 py-1 rounded-full font-semibold whitespace-nowrap ${cfg.tone}`}>{cfg.label}</span>;
 }
 
 // Abgelaufenes Einzelgespräch in der Historie: festgelegt, "Keiner passt" oder nie festgelegt.

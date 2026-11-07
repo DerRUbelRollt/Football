@@ -83,6 +83,19 @@ public class PlayersController : ControllerBase
                 .Where(a => a.PlayerId == id && a.Event!.GroupId == groupId && a.Event.EventAt >= now)
                 .ToListAsync();
             _ctx.Attendances.RemoveRange(upcomingAttendances);
+
+            // Aus den Vorbereitungen dieser Mannschaft verschwindet der Spieler ganz – inklusive seiner
+            // Einreichungen (Bilder gehen per Cascade mit) und seiner Gruppen-Zuordnung.
+            var preparationIds = await _ctx.Preparations.Where(p => p.GroupId == groupId).Select(p => p.Id).ToListAsync();
+            if (preparationIds.Count > 0)
+            {
+                _ctx.PreparationEntries.RemoveRange(await _ctx.PreparationEntries
+                    .Where(e => e.PlayerId == id && preparationIds.Contains(e.Unit!.Week!.PreparationId))
+                    .ToListAsync());
+                _ctx.PreparationAssignments.RemoveRange(await _ctx.PreparationAssignments
+                    .Where(a => a.PlayerId == id && preparationIds.Contains(a.PreparationId))
+                    .ToListAsync());
+            }
         }
 
         await _ctx.SaveChangesAsync();

@@ -13,6 +13,7 @@ import type { EventDetail } from "@/lib/api-client";
 import type { KitColors } from "@/lib/event-pdf";
 import { EventFormDialog } from "@/components/event-form-dialog";
 import { EventTypeIcon } from "@/components/event-type-icon";
+import { StatusPill } from "@/components/status-pill";
 import { eventTypeLabel } from "@/lib/event-type";
 import { MEAL_META, MEAL_ORDER } from "@/lib/meal";
 import { MealBadge } from "@/components/meal-picker";
@@ -443,27 +444,4 @@ function MealInfo({ meal }: { meal: Meal | null }) {
 
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
-}
-
-function StatusPill({ status, onChange }: { status: string; onChange: (s: "accepted" | "declined" | "pending") => void }) {
-  const btn = (active: boolean, tone: "ok" | "no" | "n") => {
-    const base = "h-8 px-2.5 rounded-md text-xs font-semibold inline-flex items-center gap-1 transition";
-    if (!active) return `${base} bg-secondary text-muted-foreground hover:text-foreground`;
-    if (tone === "ok") return `${base} bg-primary text-primary-foreground shadow-glow`;
-    if (tone === "no") return `${base} bg-destructive text-destructive-foreground`;
-    return `${base} bg-warning/20 text-warning`;
-  };
-  return (
-    <div className="flex gap-1">
-      <button className={btn(status === "accepted", "ok")} onClick={() => onChange("accepted")}>
-        <Check className="h-3.5 w-3.5" /> 
-      </button>
-      <button className={btn(status === "declined", "no")} onClick={() => onChange("declined")}>
-        <X className="h-3.5 w-3.5" />
-      </button>
-      <button className={btn(status === "pending", "n")} onClick={() => onChange("pending")} title="Offen">
-        <Clock className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
 }
